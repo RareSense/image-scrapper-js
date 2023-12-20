@@ -111,10 +111,6 @@ async function getProductLinksFromUrl(url) {
   await driver.get(url);
   // console.log("URL visited");
 
-  // const pageSource = await driver.getPageSource();
-
-  // console.log(pageSource);
-
   let iterate = true;
   let previousOffset = 0;
   while (iterate) {
@@ -128,6 +124,11 @@ async function getProductLinksFromUrl(url) {
     } else {
       console.log("ScrollPosition:", scrollPosition);
 
+      if (scrollPosition < 500) {
+        const pageSource = await driver.getPageSource();
+        if (pageSource.length < 3000) console.log(pageSource);
+        else console.log("Source is alright");
+      }
       iterate = false;
     }
   }
@@ -266,7 +267,8 @@ async function getImagesFromUrl(url, categoryDirectoryName) {
 
   if (elems.length < 1) {
     const pageSource = await driver.getPageSource();
-    console.log(pageSource);
+    if (pageSource.length < 3000) console.log(pageSource);
+    else console.log("Source is alright");
   }
 
   const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
