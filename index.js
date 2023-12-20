@@ -217,12 +217,14 @@ async function getImagesFromUrl(url, categoryDirectoryName) {
 
   await driver.get(url);
 
-  await driver.wait(
-    until.elementLocated(By.css(".multimedia-item-fade-in")),
-    30000
-  );
+  await sleep(5000);
 
-  console.log("Images located");
+  // await driver.wait(
+  //   until.elementLocated(By.css(".multimedia-item-fade-in")),
+  //   30000
+  // );
+
+  console.log("Waited 5 seconds for images");
 
   const elems = await driver.findElements(By.css(".multimedia-item-fade-in"));
 
