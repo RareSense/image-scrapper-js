@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 
-require('events').EventEmitter.defaultMaxListeners = 3000;
+require("events").EventEmitter.defaultMaxListeners = 3000;
 
 const stream = require("stream");
 
@@ -17,14 +17,14 @@ options.addArguments("headless"); // Running in headless mode
 options.addArguments("disable-gpu"); // Recommended when running headless
 options.addArguments("--disable-logging"); // This flag disables logging from the Chrome browser
 options.addArguments("--log-level=3"); // Sets the log level to only include critical logs
-// options.addArguments("--window-size=1920,1080"); // Set window size
-// options.addArguments("--disable-extensions"); // Disable extensions
+options.addArguments("--window-size=1920,1080"); // Set window size
+options.addArguments("--disable-extensions"); // Disable extensions
 // options.addArguments('--proxy-server="direct://"'); // Avoid using proxy
 // options.addArguments("--proxy-bypass-list=*"); // Bypass for local addresses
-// options.addArguments("--start-maximized"); // Start maximized
-// options.addArguments("--disable-dev-shm-usage"); // Overcome limited resource problems
-// options.addArguments("--no-sandbox"); // Bypass OS security model
-// options.addArguments("--disable-blink-features=AutomationControlled"); // Avoid detection
+options.addArguments("--start-maximized"); // Start maximized
+options.addArguments("--disable-dev-shm-usage"); // Overcome limited resource problems
+options.addArguments("--no-sandbox"); // Bypass OS security model
+options.addArguments("--disable-blink-features=AutomationControlled"); // Avoid detection
 options.addArguments(
   "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 );
@@ -69,7 +69,34 @@ options.addArguments(
 // ];
 // let urls = ["https://www2.hm.com/en_gb/ladies/shop-by-product/dresses.html"];
 
-let urls = ["https://www.stradivarius.com/gb/women/clothing/partywear-n2327"];
+let urls = [
+  "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
+  "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
+  "https://www.stradivarius.com/gb/old-money-n4439?celement=1020565670",
+  "https://www.stradivarius.com/gb/woman/clothing/shop-by-product/shearling-jacket-c1020566660.html",
+  "https://www.stradivarius.com/gb/women/clothing/faux-leather-n3297",
+  "https://www.stradivarius.com/gb/women/clothing/coats-n1926",
+  "https://www.stradivarius.com/gb/women/clothing/jackets-n1943",
+  "https://www.stradivarius.com/gb/woman/clothing/trench-coats-n3787",
+  "https://www.stradivarius.com/gb/women/clothing/blazers-n1931",
+  "https://www.stradivarius.com/gb/women/clothing/jeans-n1953",
+  "https://www.stradivarius.com/gb/women/clothing/trousers-n1966",
+  "https://www.stradivarius.com/gb/women/clothing/skirts-n1950",
+  "https://www.stradivarius.com/gb/women/clothing/knit-n1976",
+  "https://www.stradivarius.com/gb/women/clothing/tops-and-bodysuits-n1990",
+  "https://www.stradivarius.com/gb/women/clothing/t-shirts-n2029",
+  "https://www.stradivarius.com/gb/women/clothing/dresses-n1995",
+  "https://www.stradivarius.com/gb/women/clothing/shirts-n1932",
+  "https://www.stradivarius.com/gb/women/clothing/sweatshirts-n1989?celement=1718524",
+  "https://www.stradivarius.com/gb/women/clothing/shorts-n1983",
+  "https://www.stradivarius.com/gb/woman/basics-n3771",
+  "https://www.stradivarius.com/gb/women/str-teen-n2283",
+  "https://www.stradivarius.com/gb/women/sportswear-n1912",
+  "https://www.stradivarius.com/gb/women/accessories/bags-and-backpacks-n1886",
+  "https://www.stradivarius.com/gb/women/accessories/glasses-n1895",
+  "https://www.stradivarius.com/gb/women/accessories/caps-and-hats-n2042",
+];
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -114,11 +141,12 @@ async function getProductLinksFromUrl(url) {
 
   const elems = await driver.findElements(By.css("#hrefRedirectProduct"));
 
-  const links = await Promise.all(elems.map((e) => e.getAttribute("href")));
+  let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
   console.log("Total Products:", elems.length, "Total Links:", links.length);
 
   driver.quit();
   const dirName = getDirectoryNameFromURL(url);
+  links = [links[0], links[1]];
   await Promise.all(links.map((l) => getImagesFromUrl(l, dirName)));
 
   // if (pageSource.length < 3000) console.log(pageSource);
@@ -200,6 +228,10 @@ async function downloadImage(url, filepath) {
     method: "GET",
     url: url,
     responseType: "stream",
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+    },
   });
 
   await pipeline(response.data, fs.createWriteStream(filepath));
@@ -216,21 +248,26 @@ async function getImagesFromUrl(url, categoryDirectoryName) {
     .build();
 
   await driver.get(url);
+  // const pageSource = await driver.getPageSource();
 
-  await sleep(5000);
+  // console.log(pageSource);
+
+  await sleep(20000);
 
   // await driver.wait(
   //   until.elementLocated(By.css(".multimedia-item-fade-in")),
   //   30000
   // );
 
-  console.log("Waited 5 seconds for images");
+  console.log("Waited 20 seconds for images");
 
-  const elems = await driver.findElements(By.css(".multimedia-item-fade-in"));
+  const elems = await driver.findElements(By.css(".image-zoom-container img"));
 
   console.log("Total Images located:", elems.length);
 
   const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
+
+  console.log("Images are:", imageUrls);
 
   driver.quit();
 
@@ -238,7 +275,6 @@ async function getImagesFromUrl(url, categoryDirectoryName) {
     throw Error("Image not found");
   }
 
-  
   const productDirectoryName = getDirectoryNameFromURL(url);
 
   const dir = await createDirectory(
