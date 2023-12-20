@@ -34,33 +34,53 @@ let driver = new Builder()
   .setChromeOptions(options)
   .build();
 
-let urls = [
-  "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
-  "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
-  "https://www.stradivarius.com/gb/old-money-n4439?celement=1020565670",
-  "https://www.stradivarius.com/gb/woman/clothing/shop-by-product/shearling-jacket-c1020566660.html",
-  "https://www.stradivarius.com/gb/women/clothing/faux-leather-n3297",
-  "https://www.stradivarius.com/gb/women/clothing/coats-n1926",
-  "https://www.stradivarius.com/gb/women/clothing/jackets-n1943",
-  "https://www.stradivarius.com/gb/woman/clothing/trench-coats-n3787",
-  "https://www.stradivarius.com/gb/women/clothing/blazers-n1931",
-  "https://www.stradivarius.com/gb/women/clothing/jeans-n1953",
-  "https://www.stradivarius.com/gb/women/clothing/trousers-n1966",
-  "https://www.stradivarius.com/gb/women/clothing/skirts-n1950",
-  "https://www.stradivarius.com/gb/women/clothing/knit-n1976",
-  "https://www.stradivarius.com/gb/women/clothing/tops-and-bodysuits-n1990",
-  "https://www.stradivarius.com/gb/women/clothing/t-shirts-n2029",
-  "https://www.stradivarius.com/gb/women/clothing/dresses-n1995",
-  "https://www.stradivarius.com/gb/women/clothing/shirts-n1932",
-  "https://www.stradivarius.com/gb/women/clothing/sweatshirts-n1989?celement=1718524",
-  "https://www.stradivarius.com/gb/women/clothing/shorts-n1983",
-  "https://www.stradivarius.com/gb/woman/basics-n3771",
-  "https://www.stradivarius.com/gb/women/str-teen-n2283",
-  "https://www.stradivarius.com/gb/women/sportswear-n1912",
-  "https://www.stradivarius.com/gb/women/accessories/bags-and-backpacks-n1886",
-  "https://www.stradivarius.com/gb/women/accessories/glasses-n1895",
-  "https://www.stradivarius.com/gb/women/accessories/caps-and-hats-n2042",
-];
+const http = require("http");
+
+function getMetadata(key) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: "metadata.google.internal",
+      path: `/computeMetadata/v1/instance/attributes/${key}`,
+      headers: { "Metadata-Flavor": "Google" },
+    };
+
+    http
+      .get(options, (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => resolve(data));
+      })
+      .on("error", (err) => reject(err));
+  });
+}
+
+// let urls = [
+//   "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
+//   "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
+//   "https://www.stradivarius.com/gb/old-money-n4439?celement=1020565670",
+//   "https://www.stradivarius.com/gb/woman/clothing/shop-by-product/shearling-jacket-c1020566660.html",
+//   "https://www.stradivarius.com/gb/women/clothing/faux-leather-n3297",
+//   "https://www.stradivarius.com/gb/women/clothing/coats-n1926",
+//   "https://www.stradivarius.com/gb/women/clothing/jackets-n1943",
+//   "https://www.stradivarius.com/gb/woman/clothing/trench-coats-n3787",
+//   "https://www.stradivarius.com/gb/women/clothing/blazers-n1931",
+//   "https://www.stradivarius.com/gb/women/clothing/jeans-n1953",
+//   "https://www.stradivarius.com/gb/women/clothing/trousers-n1966",
+//   "https://www.stradivarius.com/gb/women/clothing/skirts-n1950",
+//   "https://www.stradivarius.com/gb/women/clothing/knit-n1976",
+//   "https://www.stradivarius.com/gb/women/clothing/tops-and-bodysuits-n1990",
+//   "https://www.stradivarius.com/gb/women/clothing/t-shirts-n2029",
+//   "https://www.stradivarius.com/gb/women/clothing/dresses-n1995",
+//   "https://www.stradivarius.com/gb/women/clothing/shirts-n1932",
+//   "https://www.stradivarius.com/gb/women/clothing/sweatshirts-n1989?celement=1718524",
+//   "https://www.stradivarius.com/gb/women/clothing/shorts-n1983",
+//   "https://www.stradivarius.com/gb/woman/basics-n3771",
+//   "https://www.stradivarius.com/gb/women/str-teen-n2283",
+//   "https://www.stradivarius.com/gb/women/sportswear-n1912",
+//   "https://www.stradivarius.com/gb/women/accessories/bags-and-backpacks-n1886",
+//   "https://www.stradivarius.com/gb/women/accessories/glasses-n1895",
+//   "https://www.stradivarius.com/gb/women/accessories/caps-and-hats-n2042",
+// ];
 
 const processed = JSON.parse(fs.readFileSync("processed.json", "utf8"));
 
@@ -190,14 +210,17 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 }
 
 async function main() {
-  // await driver.manage().setTimeouts({ script: 60000 }); // Timeout in milliseconds
+  try {
+    const url = await getMetadata("url");
+    console.log("Custom URL:", url);
 
-  for (let url of urls) {
-    if (!processed[url] || processed[url].total != processed[url].processed)
-      await getProductLinksFromUrl(url);
+    
+
+    // if (!processed[url] || processed[url].total != processed[url].processed)
+    //   await getProductLinksFromUrl(url);
+  } catch (error) {
+    console.error("Error fetching metadata:", error);
   }
-
-  // await driver.quit();
 }
 
 function createDirectory(dirName) {
