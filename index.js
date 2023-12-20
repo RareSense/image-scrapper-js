@@ -82,8 +82,16 @@ function getMetadata(key) {
 //   "https://www.stradivarius.com/gb/women/accessories/caps-and-hats-n2042",
 // ];
 
-const processed = JSON.parse(fs.readFileSync("processed.json", "utf8"));
+let processed;
 
+function createProcessedFile() {
+  if (fs.existsSync("processed.json")) {
+    const data = fs.readFileSync("processed.json", "utf8");
+    processed = JSON.parse(data);
+  } else {
+    processed = {}; // or some default value
+  }
+}
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -211,10 +219,10 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 
 async function main() {
   try {
+    createProcessedFile();
+
     const url = await getMetadata("url");
     console.log("Custom URL:", url);
-
-    
 
     // if (!processed[url] || processed[url].total != processed[url].processed)
     //   await getProductLinksFromUrl(url);
