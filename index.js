@@ -29,45 +29,10 @@ options.addArguments(
   "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 );
 
-// options.setUserPreferences({ credential_enable_service: false });
-
-// const prefs = new logging.Preferences();
-// prefs.setLevel(logging.Type.BROWSER, logging.Level.SEVERE);
-
-// options.setLoggingPrefs(prefs);
-
-// driver.executeScript(
-//   "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-// );
-
-// let urls = [
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/dresses.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/cardigans-and-jumpers.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/tops.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/jackets-and-coats.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/trousers.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/nightwear.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/skirts.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/loungewear.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/hoodies-sweatshirts.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/shirts-and-blouses.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/jeans.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/blazers-and-waistcoats.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/jumpsuits-playsuits.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/premium-selection.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/accessories/bags.html",
-//   "https://www2.hm.com/en_gb/ladies/shop-by-product/maternity-wear.html",
-//   "https://www2.hm.com/en_gb/men/shop-by-product/jackets-and-coats.html",
-//   "https://www2.hm.com/en_gb/men/shop-by-product/cardigans-and-jumpers.html",
-//   "https://www2.hm.com/en_gb/men/shop-by-product/hoodies-sweatshirts.html",
-//   "https://www2.hm.com/en_gb/men/shop-by-product/suits-blazers.html",
-//   "https://www2.hm.com/en_gb/divided/shop-by-product/dresses.html",
-//   "https://www2.hm.com/en_gb/kids/boys/clothing.html",
-//   "https://www2.hm.com/en_gb/kids/girls-9-14y/clothing.html",
-//   "https://www2.hm.com/en_gb/kids/boys-9-14y/clothing.html",
-//   "https://www2.hm.com/en_gb/kids/girls/clothing.html",
-// ];
-// let urls = ["https://www2.hm.com/en_gb/ladies/shop-by-product/dresses.html"];
+let driver = new Builder()
+  .forBrowser("chrome")
+  .setChromeOptions(options)
+  .build();
 
 let urls = [
   "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
@@ -97,19 +62,18 @@ let urls = [
   "https://www.stradivarius.com/gb/women/accessories/caps-and-hats-n2042",
 ];
 
+const processed = JSON.parse(fs.readFileSync("processed.json", "utf8"));
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function getProductLinksFromUrl(url) {
-  let driver = new Builder()
-    .forBrowser("chrome")
-    .setChromeOptions(options)
-    .build();
-  // console.log("Getting links");
+  if (processed[url] && processed[url].total === processed[url].processed) {
+    return;
+  }
 
   await driver.get(url);
-  // console.log("URL visited");
 
   let iterate = true;
   let previousOffset = 0;
@@ -138,85 +102,29 @@ async function getProductLinksFromUrl(url) {
   const elems = await driver.findElements(By.css("#hrefRedirectProduct"));
 
   let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
+
   console.log("Total Products:", elems.length, "Total Links:", links.length);
+
+  if (elems.length > 1 && elems.length === links.length) {
+    if (!processed[url])
+      processed[url] = { total: elems.length, processed: 0, products: {} };
+  }
 
   await driver.quit();
   const dirName = getDirectoryNameFromURL(url);
-  // links = [links[0], links[1]];
-  await Promise.all(links.map((l) => getImagesFromUrl(l, dirName)));
 
-  // if (pageSource.length < 3000) console.log(pageSource);
-  // await sleep(3000);
+  for (let link of links) {
+    if (!processed[url].products[link])
+      await getImagesFromUrl(link, dirName, categoryUrl);
+  }
+}
 
-  // let offsetY = 5678.39990234375;
+function updateProcessed() {
+  // Convert the data to a JSON string
+  const jsonString = JSON.stringify(processed, null, 2); // The second argument (null) and third argument (2) are for pretty-printing
 
-  // await driver.executeScript(`window.scrollTo(0, ${offsetY}, { behavior: 'smooth' })`);
-  // let scrollPosition = await driver.executeScript(
-  //   "return window.pageYOffset;"
-  // );
-  // console.log("Scroll Position:", scrollPosition);
-
-  // await driver.wait(until.elementLocated(By.css(".load-more-heading")), 30000);
-
-  // const totalItemsHeading = (
-  //   await driver.findElements(By.css(".load-more-heading"))
-  // )[0];
-  // console.log("Heading");
-  // console.log(await totalItemsHeading.getAttribute('outerHTML'));
-  // const loadMoreButton = (
-  //   await driver.findElements(By.css("button.js-load-more"))
-  // )[0];
-
-  // console.log("Button");
-
-  // let itemsShown = await totalItemsHeading.getAttribute("data-items-shown");
-  // let itemsTotal = await totalItemsHeading.getAttribute("data-total");
-
-  // itemsShown = parseInt(itemsShown);
-  // itemsTotal = parseInt(itemsTotal);
-  // console.log(`Shown=${itemsShown}, Total=${itemsTotal}`);
-
-  // while (itemsShown != itemsTotal) {
-  //   try {
-  //     await loadMoreButton.click();
-  //   } catch (err) {}
-  //   await sleep(3000);
-
-  // offsetY += 5678.39990234375;
-
-  // await driver.executeScript(`window.scrollTo(0, ${offsetY})`);
-
-  //   const newCount = parseInt(
-  //     await totalItemsHeading.getAttribute("data-items-shown")
-  //   );
-  //   if (newCount != itemsShown) itemsShown = newCount;
-  //   else break;
-
-  //   console.log(`Shown=${itemsShown}, Total=${itemsTotal}`);
-  // }
-
-  // console.log("All Items Loaded");
-  // await driver.wait(until.elementLocated(By.css(".item-link")), 30000);
-
-  // const allProducts = await driver.findElements(By.css(".item-link"));
-
-  // const links = allProducts.map(async (p) => await p.getAttribute("href"));
-
-  // console.log(
-  //   "Total products:",
-  //   allProducts.length,
-  //   ", Total Links: ",
-  //   links.length
-  // );
-
-  // return links;
-
-  // const categoryDirectoryName = getDirectoryNameFromURL(url);
-  // const dir = createDirectory(categoryDirectoryName);
-  // await getImagesFromUrl(url, categoryDirectoryName);
-
-  // await sleep(15000);
-  // console.log("15 seconds passed");
+  // Synchronously write the JSON string to a file
+  fs.writeFileSync("processed.json", jsonString, "utf8");
 }
 
 async function downloadImage(url, filepath) {
@@ -235,31 +143,15 @@ async function downloadImage(url, filepath) {
   } catch (err) {
     console.log("------------------Axios Error occured-----------------");
     console.log(err);
+    updateProcessed();
   }
   // console.log("Image downloaded");
 }
 
-async function getImagesFromUrl(url, categoryDirectoryName) {
-  // console.log("Going to get Images");
-
-  let driver = new Builder()
-    .forBrowser("chrome")
-    .setChromeOptions(options)
-    .build();
-
+async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
   await driver.get(url);
-  // const pageSource = await driver.getPageSource();
-
-  // console.log(pageSource);
 
   await sleep(20000);
-
-  // await driver.wait(
-  //   until.elementLocated(By.css(".multimedia-item-fade-in")),
-  //   30000
-  // );
-
-  // console.log("Waited 20 seconds for images");
 
   const elems = await driver.findElements(By.css(".image-zoom-container img"));
 
@@ -273,13 +165,7 @@ async function getImagesFromUrl(url, categoryDirectoryName) {
 
   const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
 
-  // console.log("Images are:", imageUrls);
-
   await driver.quit();
-
-  // if (imageUrls.length < 1) {
-  //   throw Error("Image not found");
-  // }
 
   const productDirectoryName = getDirectoryNameFromURL(url);
 
@@ -296,12 +182,20 @@ async function getImagesFromUrl(url, categoryDirectoryName) {
       return downloadImage(src, filePath);
     })
   );
+
+  if (imageUrls.length > 0) {
+    processed[categoryUrl].products[url] = true;
+    processed[categoryUrl].processed += 1;
+  }
 }
 
 async function main() {
   // await driver.manage().setTimeouts({ script: 60000 }); // Timeout in milliseconds
 
-  await Promise.all(urls.map((url) => getProductLinksFromUrl(url)));
+  for (let url of urls) {
+    if (!processed[url] || processed[url].total != processed[url].processed)
+      await getProductLinksFromUrl(url);
+  }
 
   // await driver.quit();
 }
