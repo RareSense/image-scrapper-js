@@ -146,7 +146,7 @@ async function getProductLinksFromUrl(url) {
 
   driver.quit();
   const dirName = getDirectoryNameFromURL(url);
-  links = [links[0], links[1]];
+  // links = [links[0], links[1]];
   await Promise.all(links.map((l) => getImagesFromUrl(l, dirName)));
 
   // if (pageSource.length < 3000) console.log(pageSource);
