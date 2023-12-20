@@ -123,16 +123,11 @@ async function getProductLinksFromUrl(url) {
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
 
-    console.log(
-      "Previous Offset:",
-      previousOffset,
-      ", ScrollPosition:",
-      scrollPosition
-    );
-
     if (scrollPosition != previousOffset) {
       previousOffset = scrollPosition;
     } else {
+      console.log("ScrollPosition:", scrollPosition);
+
       iterate = false;
     }
   }
@@ -144,7 +139,7 @@ async function getProductLinksFromUrl(url) {
   let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
   console.log("Total Products:", elems.length, "Total Links:", links.length);
 
-  driver.quit();
+  await driver.quit();
   const dirName = getDirectoryNameFromURL(url);
   // links = [links[0], links[1]];
   await Promise.all(links.map((l) => getImagesFromUrl(l, dirName)));
@@ -236,11 +231,11 @@ async function downloadImage(url, filepath) {
 
   await pipeline(response.data, fs.createWriteStream(filepath));
 
-  console.log("Image downloaded");
+  // console.log("Image downloaded");
 }
 
 async function getImagesFromUrl(url, categoryDirectoryName) {
-  console.log("Going to get Images");
+  // console.log("Going to get Images");
 
   let driver = new Builder()
     .forBrowser("chrome")
@@ -259,21 +254,26 @@ async function getImagesFromUrl(url, categoryDirectoryName) {
   //   30000
   // );
 
-  console.log("Waited 20 seconds for images");
+  // console.log("Waited 20 seconds for images");
 
   const elems = await driver.findElements(By.css(".image-zoom-container img"));
 
-  console.log("Total Images located:", elems.length);
+  console.log("Total Images located:", elems.length, "Url: ", url);
+
+  if (elems.length < 1) {
+    const pageSource = await driver.getPageSource();
+    console.log(pageSource);
+  }
 
   const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
 
-  console.log("Images are:", imageUrls);
+  // console.log("Images are:", imageUrls);
 
-  driver.quit();
+  await driver.quit();
 
-  if (imageUrls.length < 1) {
-    throw Error("Image not found");
-  }
+  // if (imageUrls.length < 1) {
+  //   throw Error("Image not found");
+  // }
 
   const productDirectoryName = getDirectoryNameFromURL(url);
 
