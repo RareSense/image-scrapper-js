@@ -219,18 +219,22 @@ async function getProductLinksFromUrl(url) {
 }
 
 async function downloadImage(url, filepath) {
-  const response = await axios({
-    method: "GET",
-    url: url,
-    responseType: "stream",
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-    },
-  });
+  try {
+    const response = await axios({
+      method: "GET",
+      url: url,
+      responseType: "stream",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+      },
+    });
 
-  await pipeline(response.data, fs.createWriteStream(filepath));
-
+    await pipeline(response.data, fs.createWriteStream(filepath));
+  } catch (err) {
+    console.log("------------------Axios Error occured-----------------");
+    console.log(err);
+  }
   // console.log("Image downloaded");
 }
 
