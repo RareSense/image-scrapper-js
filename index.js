@@ -11,7 +11,6 @@ const {
   createDirectory,
   downloadImage,
   getMetadata,
-  updateProcessed,
   uploadFile,
   shutdownSystem,
 } = require("./utlis");
@@ -40,6 +39,11 @@ let driver = new Builder()
   .build();
 
 let processed;
+
+function updateProcessed() {
+  const jsonString = JSON.stringify(processed, null, 2); 
+  fs.writeFileSync("processed.json", jsonString, "utf8");
+}
 
 function createProcessedFile() {
   if (fs.existsSync("processed.json")) {
@@ -162,10 +166,8 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
       console.log("Error Headers:", error.response.headers);
       processed[categoryUrl].failed[url] = error.response.status;
     } else if (error.request) {
-      // The request was made but no response was received
       console.log("Error Request:", error.request);
     } else {
-      // Something happened in setting up the request that triggered an error
       console.log("Error Message:", error.message);
     }
 

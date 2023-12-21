@@ -14,7 +14,7 @@ const storage = new Storage();
 
 const pipeline = promisify(stream.pipeline);
 
-export function createDirectory(dirName) {
+ function createDirectory(dirName) {
   const dir = path.join(path.join(path.join(__dirname, "images"), dirName));
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -24,13 +24,13 @@ export function createDirectory(dirName) {
   return dir;
 }
 
-export function getDirectoryNameFromURL(href) {
+ function getDirectoryNameFromURL(href) {
   const url = new URL(href);
   const pathSegments = url.pathname.split("/");
   return pathSegments[pathSegments.length - 1].split(".")[0]; // 'slit-knitted-skirt_67050459'
 }
 
-export function shutdownSystem() {
+ function shutdownSystem() {
   exec("sudo shutdown -h 10", (error, stdout, stderr) => {
     if (error) {
       console.error(`Error: ${error}`);
@@ -41,7 +41,7 @@ export function shutdownSystem() {
   });
 }
 
-export async function downloadImage(url, filepath) {
+ async function downloadImage(url, filepath) {
   const response = await axios({
     method: "GET",
     url: url,
@@ -55,15 +55,9 @@ export async function downloadImage(url, filepath) {
   await pipeline(response.data, fs.createWriteStream(filepath));
 }
 
-export function updateProcessed() {
-  // Convert the data to a JSON string
-  const jsonString = JSON.stringify(processed, null, 2); // The second argument (null) and third argument (2) are for pretty-printing
 
-  // Synchronously write the JSON string to a file
-  fs.writeFileSync("processed.json", jsonString, "utf8");
-}
 
-export function getMetadata(key) {
+ function getMetadata(key) {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: "metadata.google.internal",
@@ -81,7 +75,7 @@ export function getMetadata(key) {
   });
 }
 
-export async function uploadDirectory(
+ async function uploadDirectory(
   localFolderPath,
   bucketName,
   bucketFolderPath = ""
@@ -99,26 +93,29 @@ export async function uploadDirectory(
         destination: bucketFilePath,
         gzip: true, // Optional, for gzip compression
       });
-      // console.log(`Uploaded ${localFilePath} to ${bucketFilePath}`);
     }
   }
 }
 
-export async function uploadFile(bucketName, filename, destination) {
-  // Uploads a file to the bucket
+ async function uploadFile(bucketName, filename, destination) {
   await storage.bucket(bucketName).upload(filename, {
-    // Support for HTTP requests made with `Accept-Encoding: gzip`
     gzip: true,
-    // By setting the option `destination`, you can change the name of the
-    // object you are uploading to a bucket.
     destination: destination,
     metadata: {
-      // Enable long-lived HTTP caching headers
-      // Use only if the contents of the file will never change
-      // (If the contents will change, use cacheControl: 'no-cache')
       cacheControl: "public, max-age=31536000",
     },
   });
 
   console.log(`${filename} uploaded to ${bucketName}.`);
+}
+
+
+module.exports={
+    uploadDirectory,
+    uploadFile,
+    downloadImage,
+    getMetadata,
+    getDirectoryNameFromURL,
+    shutdownSystem,
+    createDirectory
 }
