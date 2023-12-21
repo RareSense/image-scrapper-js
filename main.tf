@@ -17,7 +17,7 @@ variable "private_key" {
 
 resource "google_compute_instance" "default" {
   count        = length(var.instance_urls)
-  name         = "instance-${count.index}"
+  name         = "star-${count.index}"
 
   machine_type = "e2-standard-4"
   zone         = "us-central1-a"
@@ -35,8 +35,14 @@ resource "google_compute_instance" "default" {
     }
   }
 
+  service_account {
+    email  = google_service_account.my_service_account.email
+    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+  }
+
   metadata = {
     url = element(var.instance_urls, count.index)
+    brand = "stradivarius"
     startup-script = <<-EOT
         #!/bin/bash
         {
@@ -71,6 +77,7 @@ resource "google_compute_instance" "default" {
             npm install
             echo "Running the project"
             node ./index.js
+
         } &> /var/log/startup-script.log
 
     EOT

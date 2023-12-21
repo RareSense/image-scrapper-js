@@ -1,9 +1,12 @@
 const { Builder, By, Key, until, logging } = require("selenium-webdriver");
+const { exec } = require("child_process");
 
 const chrome = require("selenium-webdriver/chrome");
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
+const { Storage } = require("@google-cloud/storage");
+const storage = new Storage();
 
 require("events").EventEmitter.defaultMaxListeners = 3000;
 
@@ -36,6 +39,48 @@ let driver = new Builder()
 
 const http = require("http");
 
+async function uploadFile(bucketName, filename, destination) {
+  // Uploads a file to the bucket
+  await storage.bucket(bucketName).upload(filename, {
+    // Support for HTTP requests made with `Accept-Encoding: gzip`
+    gzip: true,
+    // By setting the option `destination`, you can change the name of the
+    // object you are uploading to a bucket.
+    destination: destination,
+    metadata: {
+      // Enable long-lived HTTP caching headers
+      // Use only if the contents of the file will never change
+      // (If the contents will change, use cacheControl: 'no-cache')
+      cacheControl: "public, max-age=31536000",
+    },
+  });
+
+  console.log(`${filename} uploaded to ${bucketName}.`);
+}
+
+async function uploadDirectory(
+  localFolderPath,
+  bucketName,
+  bucketFolderPath = ""
+) {
+  const files = fs.readdirSync(localFolderPath);
+
+  for (const file of files) {
+    const localFilePath = path.join(localFolderPath, file);
+    const bucketFilePath = path.join(bucketFolderPath, file);
+
+    if (fs.lstatSync(localFilePath).isDirectory()) {
+      await uploadDirectory(localFilePath, bucketFilePath);
+    } else {
+      await storage.bucket(bucketName).upload(localFilePath, {
+        destination: bucketFilePath,
+        gzip: true, // Optional, for gzip compression
+      });
+      // console.log(`Uploaded ${localFilePath} to ${bucketFilePath}`);
+    }
+  }
+}
+
 function getMetadata(key) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -53,34 +98,6 @@ function getMetadata(key) {
       .on("error", (err) => reject(err));
   });
 }
-
-// let urls = [
-//   "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
-//   "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
-//   "https://www.stradivarius.com/gb/old-money-n4439?celement=1020565670",
-//   "https://www.stradivarius.com/gb/woman/clothing/shop-by-product/shearling-jacket-c1020566660.html",
-//   "https://www.stradivarius.com/gb/women/clothing/faux-leather-n3297",
-//   "https://www.stradivarius.com/gb/women/clothing/coats-n1926",
-//   "https://www.stradivarius.com/gb/women/clothing/jackets-n1943",
-//   "https://www.stradivarius.com/gb/woman/clothing/trench-coats-n3787",
-//   "https://www.stradivarius.com/gb/women/clothing/blazers-n1931",
-//   "https://www.stradivarius.com/gb/women/clothing/jeans-n1953",
-//   "https://www.stradivarius.com/gb/women/clothing/trousers-n1966",
-//   "https://www.stradivarius.com/gb/women/clothing/skirts-n1950",
-//   "https://www.stradivarius.com/gb/women/clothing/knit-n1976",
-//   "https://www.stradivarius.com/gb/women/clothing/tops-and-bodysuits-n1990",
-//   "https://www.stradivarius.com/gb/women/clothing/t-shirts-n2029",
-//   "https://www.stradivarius.com/gb/women/clothing/dresses-n1995",
-//   "https://www.stradivarius.com/gb/women/clothing/shirts-n1932",
-//   "https://www.stradivarius.com/gb/women/clothing/sweatshirts-n1989?celement=1718524",
-//   "https://www.stradivarius.com/gb/women/clothing/shorts-n1983",
-//   "https://www.stradivarius.com/gb/woman/basics-n3771",
-//   "https://www.stradivarius.com/gb/women/str-teen-n2283",
-//   "https://www.stradivarius.com/gb/women/sportswear-n1912",
-//   "https://www.stradivarius.com/gb/women/accessories/bags-and-backpacks-n1886",
-//   "https://www.stradivarius.com/gb/women/accessories/glasses-n1895",
-//   "https://www.stradivarius.com/gb/women/accessories/caps-and-hats-n2042",
-// ];
 
 let processed;
 
@@ -136,14 +153,23 @@ async function getProductLinksFromUrl(url) {
   console.log("Total Products:", elems.length, "Total Links:", links.length);
 
   if (elems.length > 1 && elems.length === links.length) {
-    if (!processed[url])
-      processed[url] = { total: elems.length, processed: 0, products: {} };
+    if (!processed[url]) {
+      processed[url] = {
+        total: elems.length,
+        processed: 0,
+        toProcess: {},
+        failed: {},
+      };
+      for (let link of links) {
+        processed[url].toProcess[link] = 1;
+      }
+    }
   }
 
   const dirName = getDirectoryNameFromURL(url);
 
   for (let link of links) {
-    if (!processed[url].products[link])
+    if (processed[url].toProcess[link])
       await getImagesFromUrl(link, dirName, url);
   }
 }
@@ -157,34 +183,27 @@ function updateProcessed() {
 }
 
 async function downloadImage(url, filepath) {
-  try {
-    const response = await axios({
-      method: "GET",
-      url: url,
-      responseType: "stream",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-      },
-    });
+  const response = await axios({
+    method: "GET",
+    url: url,
+    responseType: "stream",
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+    },
+  });
 
-    await pipeline(response.data, fs.createWriteStream(filepath));
-  } catch (err) {
-    console.log("------------------Axios Error occured-----------------");
-    console.log(err);
-    updateProcessed();
-  }
-  // console.log("Image downloaded");
+  await pipeline(response.data, fs.createWriteStream(filepath));
 }
 
 async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
   await driver.get(url);
 
-  await sleep(20000);
+  await sleep(40000);
 
   const elems = await driver.findElements(By.css(".image-zoom-container img"));
 
-  console.log("Total Images located:", elems.length, "Url: ", url);
+  console.log("Total Images located:");
 
   if (elems.length < 1) {
     const pageSource = await driver.getPageSource();
@@ -194,7 +213,6 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 
   const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
 
-
   const productDirectoryName = getDirectoryNameFromURL(url);
 
   const dir = await createDirectory(
@@ -203,38 +221,89 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 
   let imageCount = 0;
 
-  await Promise.all(
-    imageUrls.map((src) => {
-      const filePath = `${dir}/${imageCount}.jpg`;
-      imageCount++;
-      return downloadImage(src, filePath);
-    })
-  );
+  try {
+    await Promise.all(
+      imageUrls.map((src) => {
+        const filePath = `${dir}/${imageCount}.jpg`;
+        imageCount++;
+        return downloadImage(src, filePath);
+      })
+    );
+    if (imageUrls.length > 0) {
+      delete processed[categoryUrl].toProcess[url];
+      processed[categoryUrl].processed += 1;
+    }
+  } catch (error) {
+    console.log("------------------Axios Error occured-----------------");
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.log("Error Data:", error.response.data);
+      console.log("Error Status:", error.response.status);
+      console.log("Error Headers:", error.response.headers);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.log("Error Request:", error.request);
+    } else {
+      // Something happened in setting up the request that triggered an error
+      console.log("Error Message:", error.message);
+    }
 
-  if (imageUrls.length > 0) {
-    processed[categoryUrl].products[url] = true;
-    processed[categoryUrl].processed += 1;
+    console.log("Error Config:", error.config);
+    processed[categoryUrl].failed[url] = 1;
   }
+
+  console.log(
+    "Total:",
+    processed[categoryUrl].total,
+    "Processed:",
+    processed[categoryUrl].processed,
+    "Failed:",
+    Object.keys(processed[categoryUrl].failed)
+  );
 }
 
 async function main() {
+  let url;
+  let brand;
   try {
     createProcessedFile();
 
-    const url = await getMetadata("url");
-    console.log("Custom URL:", url);
+    url = await getMetadata("url");
+    brand = await getMetadata("brand");
 
     if (!processed[url] || processed[url].total != processed[url].processed) {
       await getProductLinksFromUrl(url);
+
+      await uploadDirectory(images, "rs_fashion_dataset", brand);
     } else {
       console.log("Processed:", processed);
       console.log("Processed[url]:", processed[url]);
     }
   } catch (error) {
     console.error("Error fetching metadata:", error);
+  } finally {
+    updateProcessed();
+
+    await uploadFile(
+      "rs_fashion_dataset",
+      "processed.json",
+      getDirectoryNameFromURL(url) + "/" + "processed.json"
+    );
   }
 
   await driver.quit();
+}
+
+function shutdownSystem() {
+  exec("sudo shutdown now", (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error: ${error}`);
+      return;
+    }
+    console.log(`stdout: ${stdout}`);
+    console.error(`stderr: ${stderr}`);
+  });
 }
 
 function createDirectory(dirName) {
@@ -256,6 +325,7 @@ function getDirectoryNameFromURL(href) {
 main()
   .then(() => {
     console.log("Process completed");
+    shutdownSystem();
   })
   .catch((err) => {
     console.log("Error occured:", err);
