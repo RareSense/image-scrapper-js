@@ -140,7 +140,6 @@ async function getProductLinksFromUrl(url) {
       processed[url] = { total: elems.length, processed: 0, products: {} };
   }
 
-  await driver.quit();
   const dirName = getDirectoryNameFromURL(url);
 
   for (let link of links) {
@@ -195,7 +194,6 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 
   const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
 
-  await driver.quit();
 
   const productDirectoryName = getDirectoryNameFromURL(url);
 
@@ -235,6 +233,8 @@ async function main() {
   } catch (error) {
     console.error("Error fetching metadata:", error);
   }
+
+  await driver.quit();
 }
 
 function createDirectory(dirName) {
