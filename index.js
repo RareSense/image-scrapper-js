@@ -70,7 +70,7 @@ async function uploadDirectory(
     const bucketFilePath = path.join(bucketFolderPath, file);
 
     if (fs.lstatSync(localFilePath).isDirectory()) {
-      await uploadDirectory(localFilePath, bucketFilePath);
+      await uploadDirectory(localFilePath, bucketName, bucketFilePath);
     } else {
       await storage.bucket(bucketName).upload(localFilePath, {
         destination: bucketFilePath,
@@ -252,7 +252,6 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
     }
 
     console.log("Error Config:", error.config);
-   
   }
 
   console.log(
