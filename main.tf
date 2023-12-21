@@ -1,12 +1,13 @@
-provider "google" {
-  credentials = file("google.json")
-  project     = "vocal-circle-388907"
-  region      = "us-central1"
-  zone        = "us-central1-a"
-}
-
 variable "instance_urls" {
   type = list(string)
+}
+variable "project_id" {
+  type = string
+  default = "vocal-circle-388907"
+}
+variable "brand" {
+  type = string
+  default = "stradivarius"
 }
 variable "private_key" {
   description = "Private key"
@@ -14,12 +15,30 @@ variable "private_key" {
   default     = ""
 }
 
+provider "google" {
+  credentials = file("google.json")
+  project     = var.project_id
+  region      = "us-central1"
+  zone        = "us-central1-a"
+}
+
+
+resource "google_service_account" "brand_image_uploader" {
+  account_id   = "brand-image-uploader"
+  display_name = "Service account to upload images from VMs to GCS"
+}
+
+resource "google_project_iam_member" "storage_object_admin" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.brand_image_uploader.email}"
+}
 
 resource "google_compute_instance" "default" {
   count        = length(var.instance_urls)
-  name         = "star-${count.index}"
+  name         = "${var.brand}-${count.index}"
 
-  machine_type = "e2-standard-4"
+  machine_type = "e2-standard-2"
   zone         = "us-central1-a"
 
   boot_disk {
@@ -36,13 +55,13 @@ resource "google_compute_instance" "default" {
   }
 
   service_account {
-    email  = google_service_account.my_service_account.email
+    email  = google_service_account.brand_image_uploader.email
     scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
 
   metadata = {
     url = element(var.instance_urls, count.index)
-    brand = "stradivarius"
+    brand = var.brand
     startup-script = <<-EOT
         #!/bin/bash
         {

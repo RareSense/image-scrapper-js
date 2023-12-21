@@ -215,7 +215,7 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 
   const productDirectoryName = getDirectoryNameFromURL(url);
 
-  const dir = await createDirectory(
+  const dir = createDirectory(
     `${categoryDirectoryName}/${productDirectoryName}`
   );
 
@@ -264,18 +264,16 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 }
 
 async function main() {
-  let url;
-  let brand;
   try {
     createProcessedFile();
 
-    url = await getMetadata("url");
-    brand = await getMetadata("brand");
+    const url = await getMetadata("url");
+    const brand = await getMetadata("brand");
 
     if (!processed[url] || processed[url].total != processed[url].processed) {
       await getProductLinksFromUrl(url);
 
-      await uploadDirectory(images, "rs_fashion_dataset", brand);
+      await uploadDirectory("images", "rs_fashion_dataset", brand);
     } else {
       console.log("Processed:", processed);
       console.log("Processed[url]:", processed[url]);
@@ -288,7 +286,7 @@ async function main() {
     await uploadFile(
       "rs_fashion_dataset",
       "processed.json",
-      getDirectoryNameFromURL(url) + "/" + "processed.json"
+      brand + "/" + getDirectoryNameFromURL(url) + "/" + "processed.json"
     );
   }
 
