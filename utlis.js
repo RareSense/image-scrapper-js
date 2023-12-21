@@ -4,36 +4,36 @@ const path = require("path");
 const axios = require("axios");
 const fs = require("fs");
 
-
-
 const stream = require("stream");
 
 const { promisify } = require("util");
-
 
 const { Storage } = require("@google-cloud/storage");
 const storage = new Storage();
 
 const pipeline = promisify(stream.pipeline);
 
- function createDirectory(dirName) {
+function createDirectory(dirName) {
   const dir = path.join(path.join(path.join(__dirname, "images"), dirName));
+  let finalPath;
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    finalPath = dir;
+    fs.mkdirSync(finalPath, { recursive: true });
   } else {
-    fs.mkdirSync(`${dir}-${Date.now()}`, { recursive: true });
+    finalPath = `${dir}-${Date.now()}`;
+    fs.mkdirSync(finalPath, { recursive: true });
   }
-  return dir;
+  return finalPath;
 }
 
- function getDirectoryNameFromURL(href) {
+function getDirectoryNameFromURL(href) {
   const url = new URL(href);
   const pathSegments = url.pathname.split("/");
   return pathSegments[pathSegments.length - 1].split(".")[0]; // 'slit-knitted-skirt_67050459'
 }
 
- function shutdownSystem() {
-  exec("sudo shutdown -h 10", (error, stdout, stderr) => {
+function shutdownSystem() {
+  exec("sudo shutdown now", (error, stdout, stderr) => {
     if (error) {
       console.error(`Error: ${error}`);
       return;
@@ -43,7 +43,7 @@ const pipeline = promisify(stream.pipeline);
   });
 }
 
- async function downloadImage(url, filepath) {
+async function downloadImage(url, filepath) {
   const response = await axios({
     method: "GET",
     url: url,
@@ -57,9 +57,7 @@ const pipeline = promisify(stream.pipeline);
   await pipeline(response.data, fs.createWriteStream(filepath));
 }
 
-
-
- function getMetadata(key) {
+function getMetadata(key) {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: "metadata.google.internal",
@@ -77,7 +75,7 @@ const pipeline = promisify(stream.pipeline);
   });
 }
 
- async function uploadDirectory(
+async function uploadDirectory(
   localFolderPath,
   bucketName,
   bucketFolderPath = ""
@@ -99,7 +97,7 @@ const pipeline = promisify(stream.pipeline);
   }
 }
 
- async function uploadFile(bucketName, filename, destination) {
+async function uploadFile(bucketName, filename, destination) {
   await storage.bucket(bucketName).upload(filename, {
     gzip: true,
     destination: destination,
@@ -111,13 +109,12 @@ const pipeline = promisify(stream.pipeline);
   console.log(`${filename} uploaded to ${bucketName}.`);
 }
 
-
-module.exports={
-    uploadDirectory,
-    uploadFile,
-    downloadImage,
-    getMetadata,
-    getDirectoryNameFromURL,
-    shutdownSystem,
-    createDirectory
-}
+module.exports = {
+  uploadDirectory,
+  uploadFile,
+  downloadImage,
+  getMetadata,
+  getDirectoryNameFromURL,
+  shutdownSystem,
+  createDirectory,
+};
