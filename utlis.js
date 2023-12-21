@@ -3,9 +3,16 @@ const { exec } = require("child_process");
 const path = require("path");
 const axios = require("axios");
 
+
+const stream = require("stream");
+
+const { promisify } = require("util");
+
+
 const { Storage } = require("@google-cloud/storage");
 const storage = new Storage();
 
+const pipeline = promisify(stream.pipeline);
 
 export function createDirectory(dirName) {
   const dir = path.join(path.join(path.join(__dirname, "images"), dirName));
@@ -97,24 +104,21 @@ export async function uploadDirectory(
   }
 }
 
-
-
 export async function uploadFile(bucketName, filename, destination) {
-    // Uploads a file to the bucket
-    await storage.bucket(bucketName).upload(filename, {
-      // Support for HTTP requests made with `Accept-Encoding: gzip`
-      gzip: true,
-      // By setting the option `destination`, you can change the name of the
-      // object you are uploading to a bucket.
-      destination: destination,
-      metadata: {
-        // Enable long-lived HTTP caching headers
-        // Use only if the contents of the file will never change
-        // (If the contents will change, use cacheControl: 'no-cache')
-        cacheControl: "public, max-age=31536000",
-      },
-    });
-  
-    console.log(`${filename} uploaded to ${bucketName}.`);
-  }
-  
+  // Uploads a file to the bucket
+  await storage.bucket(bucketName).upload(filename, {
+    // Support for HTTP requests made with `Accept-Encoding: gzip`
+    gzip: true,
+    // By setting the option `destination`, you can change the name of the
+    // object you are uploading to a bucket.
+    destination: destination,
+    metadata: {
+      // Enable long-lived HTTP caching headers
+      // Use only if the contents of the file will never change
+      // (If the contents will change, use cacheControl: 'no-cache')
+      cacheControl: "public, max-age=31536000",
+    },
+  });
+
+  console.log(`${filename} uploaded to ${bucketName}.`);
+}

@@ -1,15 +1,21 @@
 const { Builder, By, until, logging } = require("selenium-webdriver");
 
-
 const chrome = require("selenium-webdriver/chrome");
 const fs = require("fs");
 
 require("events").EventEmitter.defaultMaxListeners = 3000;
 
-const stream = require("stream");
+const {
+  uploadDirectory,
+  getDirectoryNameFromURL,
+  createDirectory,
+  downloadImage,
+  getMetadata,
+  updateProcessed,
+  uploadFile,
+  shutdownSystem,
+} = require("./utlis");
 
-const { promisify } = require("util");
-const pipeline = promisify(stream.pipeline);
 
 let options = new chrome.Options();
 options.addArguments("headless"); // Running in headless mode
@@ -32,7 +38,6 @@ let driver = new Builder()
   .forBrowser("chrome")
   .setChromeOptions(options)
   .build();
-
 
 let processed;
 
@@ -108,8 +113,6 @@ async function getProductLinksFromUrl(url) {
       await getImagesFromUrl(link, dirName, url);
   }
 }
-
-
 
 async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
   await driver.get(url);
@@ -209,7 +212,6 @@ async function main() {
 
   await driver.quit();
 }
-
 
 main()
   .then(() => {
