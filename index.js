@@ -121,7 +121,7 @@ async function getProductLinksFromUrl(url) {
 async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
   await driver.get(url);
 
-  await sleep(40000);
+  await sleep(10000);
 
   const elems = await driver.findElements(By.css(".image-zoom-container img"));
 
