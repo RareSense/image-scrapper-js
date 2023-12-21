@@ -224,8 +224,8 @@ async function main() {
     const url = await getMetadata("url");
     console.log("Custom URL:", url);
 
-    // if (!processed[url] || processed[url].total != processed[url].processed)
-    //   await getProductLinksFromUrl(url);
+    if (!processed[url] || processed[url].total != processed[url].processed)
+      await getProductLinksFromUrl(url);
   } catch (error) {
     console.error("Error fetching metadata:", error);
   }

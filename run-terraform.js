@@ -19,7 +19,6 @@ function runTerraformCommand(command) {
 // Read URLs or other inputs
 let urls = [
   "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
-  "https://www.stradivarius.com/gb/women/clothing/partywear-n2327",
   "https://www.stradivarius.com/gb/old-money-n4439?celement=1020565670",
   "https://www.stradivarius.com/gb/woman/clothing/shop-by-product/shearling-jacket-c1020566660.html",
   "https://www.stradivarius.com/gb/women/clothing/faux-leather-n3297",
