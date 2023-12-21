@@ -203,7 +203,7 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 
   const elems = await driver.findElements(By.css(".image-zoom-container img"));
 
-  console.log("Total Images located:");
+  console.log("Total Images located:", elems.length);
 
   if (elems.length < 1) {
     const pageSource = await driver.getPageSource();
@@ -235,12 +235,14 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
     }
   } catch (error) {
     console.log("------------------Axios Error occured-----------------");
+    processed[categoryUrl].failed[url] = 1;
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
       console.log("Error Data:", error.response.data);
       console.log("Error Status:", error.response.status);
       console.log("Error Headers:", error.response.headers);
+      processed[categoryUrl].failed[url] = error.response.status;
     } else if (error.request) {
       // The request was made but no response was received
       console.log("Error Request:", error.request);
@@ -250,7 +252,7 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
     }
 
     console.log("Error Config:", error.config);
-    processed[categoryUrl].failed[url] = 1;
+   
   }
 
   console.log(
