@@ -101,6 +101,8 @@ async function getProductLinksFromUrl(url) {
     return;
   }
 
+  console.log("Scrapping started...!");
+
   await driver.get(url);
 
   let iterate = true;
@@ -143,7 +145,7 @@ async function getProductLinksFromUrl(url) {
 
   for (let link of links) {
     if (!processed[url].products[link])
-      await getImagesFromUrl(link, dirName, categoryUrl);
+      await getImagesFromUrl(link, dirName, url);
   }
 }
 
@@ -224,8 +226,12 @@ async function main() {
     const url = await getMetadata("url");
     console.log("Custom URL:", url);
 
-    if (!processed[url] || processed[url].total != processed[url].processed)
+    if (!processed[url] || processed[url].total != processed[url].processed) {
       await getProductLinksFromUrl(url);
+    } else {
+      console.log("Processed:", processed);
+      console.log("Processed[url]:", processed[url]);
+    }
   } catch (error) {
     console.error("Error fetching metadata:", error);
   }
