@@ -21,7 +21,7 @@ const pipeline = promisify(stream.pipeline);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   } else {
-    fs.mkdirSync(`${dir}_${Date.now()}`, { recursive: true });
+    fs.mkdirSync(`${dir}-${Date.now()}`, { recursive: true });
   }
   return dir;
 }
