@@ -266,15 +266,16 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 }
 
 async function main() {
+  let url;
+  let brand;
   try {
     createProcessedFile();
 
-    const url = await getMetadata("url");
-    const brand = await getMetadata("brand");
+    url = await getMetadata("url");
+    brand = await getMetadata("brand");
 
     if (!processed[url] || processed[url].total != processed[url].processed) {
       await getProductLinksFromUrl(url);
-
       await uploadDirectory("images", "rs_fashion_dataset", brand);
     } else {
       console.log("Processed:", processed);
