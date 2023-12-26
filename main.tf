@@ -7,7 +7,7 @@ variable "project_id" {
 }
 variable "brand" {
   type = string
-  default = "stradivarius"
+  default = "zara"
 }
 variable "private_key" {
   description = "Private key"
@@ -90,7 +90,7 @@ resource "google_compute_instance" "default" {
             git clone https://github.com/RareSense/image-scrapper-js.git
             cd image-scrapper-js
             git fetch origin
-            git checkout stardivarius
+            git checkout zara
 
             echo "Installing node dependencies"
             npm install

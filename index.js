@@ -15,7 +15,6 @@ const {
   shutdownSystem,
 } = require("./utlis");
 
-
 let options = new chrome.Options();
 options.addArguments("headless"); // Running in headless mode
 options.addArguments("disable-gpu"); // Recommended when running headless
@@ -41,7 +40,7 @@ let driver = new Builder()
 let processed;
 
 function updateProcessed() {
-  const jsonString = JSON.stringify(processed, null, 2); 
+  const jsonString = JSON.stringify(processed, null, 2);
   fs.writeFileSync("processed.json", jsonString, "utf8");
 }
 
@@ -68,8 +67,9 @@ async function getProductLinksFromUrl(url) {
 
   let iterate = true;
   let previousOffset = 0;
+
   while (iterate) {
-    await sleep(10000);
+    await sleep(4000);
     const scrollPosition = await driver.executeScript(
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
@@ -88,58 +88,103 @@ async function getProductLinksFromUrl(url) {
     }
   }
 
-  await sleep(10000);
+  await sleep(5000);
 
-  const elems = await driver.findElements(By.css("#hrefRedirectProduct"));
+  const elems = await driver.findElements(
+    By.css(".product-link.product-grid-product__link.link")
+  );
 
   let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
 
-  console.log("Total Products:", elems.length, "Total Links:", links.length);
+  console.log("Elems found:", elems.length, "Total found:", links.length);
 
   if (elems.length > 1 && elems.length === links.length) {
     if (!processed[url]) {
       processed[url] = {
-        total: elems.length,
+        total: 0,
         processed: 0,
         toProcess: {},
         failed: {},
       };
+      let count = 0;
       for (let link of links) {
-        processed[url].toProcess[link] = 1;
+        if (processed[url].toProcess[link]) {
+          console.log("Duplicated link");
+          count++;
+        } else processed[url].toProcess[link] = 1;
       }
+
+      const total = Object.keys(processed[url].toProcess).length;
+
+      processed[url].total = total;
+
+      console.log("Total Links to process:", total, "Duplicated Links:", count);
     }
   }
 
   const dirName = getDirectoryNameFromURL(url);
 
-  for (let link of links) {
-    if (processed[url].toProcess[link])
-      await getImagesFromUrl(link, dirName, url);
+  for (let link of Object.keys(processed[url].toProcess)) {
+    await getImagesFromUrl(link, dirName, url);
   }
+}
+
+function getHighestResolutionUrl(srcset) {
+  let urls = srcset.split(", ");
+  let highestResUrl = "";
+  let maxRes = 0;
+
+  for (let url of urls) {
+    let parts = url.split(" ");
+    let res = parseInt(parts[1].replace("w", ""));
+
+    if (res > maxRes) {
+      maxRes = res;
+      highestResUrl = parts[0];
+    }
+  }
+
+  return highestResUrl;
 }
 
 async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
   await driver.get(url);
 
-  await sleep(40000);
+  await sleep(1000);
 
-  const elems = await driver.findElements(By.css(".image-zoom-container img"));
+  let pictureElements = await driver.findElements(By.tagName("picture"));
 
-  console.log("Total Images located:", elems.length);
+  let imageUrls = [];
+  for (let picture of pictureElements) {
+    let srcset = await picture
+      .findElement(By.tagName("source"))
+      .getAttribute("srcset");
+    let highestResUrl = getHighestResolutionUrl(srcset);
+    imageUrls.push(highestResUrl);
+  }
 
-  if (elems.length < 1) {
+  console.log(
+    "Total Images located:",
+    imageUrls.length,
+    "=",
+    pictureElements.length
+  );
+
+  if (imageUrls.length < 1) {
     const pageSource = await driver.getPageSource();
     if (pageSource.length < 3000) console.log(pageSource);
     else console.log("Source is alright");
   }
 
-  const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
+  // const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
 
   const productDirectoryName = getDirectoryNameFromURL(url);
 
   const dir = createDirectory(
     `${categoryDirectoryName}/${productDirectoryName}`
   );
+
+  console.log("Dir:", dir);
 
   let imageCount = 0;
 
@@ -154,6 +199,8 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
     if (imageUrls.length > 0) {
       delete processed[categoryUrl].toProcess[url];
       processed[categoryUrl].processed += 1;
+    } else {
+      processed[categoryUrl].toProcess[url] = "Images not found";
     }
   } catch (error) {
     console.log("------------------Axios Error occured-----------------");
@@ -192,6 +239,10 @@ async function main() {
 
     url = await getMetadata("url");
     brand = await getMetadata("brand");
+
+    // url =
+    //   "https://www.zara.com/ww/en/woman-outerwear-padded-l1195.html?v1=2290717";
+    // brand = "zara";
 
     if (!processed[url] || processed[url].total != processed[url].processed) {
       await getProductLinksFromUrl(url);
