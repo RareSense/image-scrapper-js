@@ -56,25 +56,49 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getProductLinksFromUrl(url) {
+async function getProductLinksFromUrl(url, queryDirectoryName) {
   if (processed[url] && processed[url].total === processed[url].processed) {
     return;
   }
+
+  let queryDirectoryPath = createDirectory(queryDirectoryName);
 
   console.log("Scrapping started...!");
 
   await driver.get(url);
 
+  await sleep(10000);
+
   let iterate = true;
   let previousOffset = 0;
 
+  let totalElems = 0;
+  let allLinks = [];
+  let allElems = [];
   while (iterate) {
-    await sleep(4000);
+    const elems = await driver.findElements(By.css("a[href^='/pin/']"));
+
+    let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
+
+    allLinks = [...allLinks, ...links];
+    allElems = [...allElems, ...elems];
+    totalElems += links.length;
+    console.log(
+      "Elems found:",
+      elems.length,
+      ",Links found:",
+      links.length,
+      ",Total Links:",
+      totalElems
+    );
+
+    await sleep(10000);
     const scrollPosition = await driver.executeScript(
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
 
     if (scrollPosition != previousOffset) {
+      console.log("ScrollPosition:", scrollPosition);
       previousOffset = scrollPosition;
     } else {
       console.log("ScrollPosition:", scrollPosition);
@@ -90,15 +114,7 @@ async function getProductLinksFromUrl(url) {
 
   await sleep(5000);
 
-  const elems = await driver.findElements(
-    By.css(".product-link.product-grid-product__link.link")
-  );
-
-  let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
-
-  console.log("Elems found:", elems.length, "Total found:", links.length);
-
-  if (elems.length > 1 && elems.length === links.length) {
+  if (allElems.length > 1 && allElems.length === allLinks.length) {
     if (!processed[url]) {
       processed[url] = {
         total: 0,
@@ -107,7 +123,7 @@ async function getProductLinksFromUrl(url) {
         failed: {},
       };
       let count = 0;
-      for (let link of links) {
+      for (let link of allLinks) {
         if (processed[url].toProcess[link]) {
           console.log("Duplicated link");
           count++;
@@ -122,11 +138,18 @@ async function getProductLinksFromUrl(url) {
     }
   }
 
-  const dirName = getDirectoryNameFromURL(url);
-
+  let iteration = 0;
   for (let link of Object.keys(processed[url].toProcess)) {
-    await getImagesFromUrl(link, dirName, url);
+    iteration++;
+    await getImagesFromUrl(link, queryDirectoryPath, url, iteration);
   }
+  // await Promise.all([
+  //   Object.keys(processed[url].toProcess).map((link) => {
+  //     iteration++;
+  //     console.log("Total Iterations:", iteration);
+  //     // return getImagesFromUrl(link, queryDirectoryPath, url, iteration);
+  //   }),
+  // ]);
 }
 
 function getHighestResolutionUrl(srcset) {
@@ -147,61 +170,31 @@ function getHighestResolutionUrl(srcset) {
   return highestResUrl;
 }
 
-async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
+async function getImagesFromUrl(
+  url,
+  categoryDirectoryName,
+  categoryUrl,
+  iteration
+) {
   await driver.get(url);
 
   await sleep(1000);
 
-  let pictureElements = await driver.findElements(By.tagName("picture"));
-
-  let imageUrls = [];
-  for (let picture of pictureElements) {
-    let srcset = await picture
-      .findElement(By.tagName("source"))
-      .getAttribute("srcset");
-    let highestResUrl = getHighestResolutionUrl(srcset);
-    imageUrls.push(highestResUrl);
-  }
-
-  console.log(
-    "Total Images located:",
-    imageUrls.length,
-    "=",
-    pictureElements.length
+  let imgElements = await driver.findElements(
+    By.css("[data-test-id='pin-closeup-image'] img")
   );
-
-  if (imageUrls.length < 1) {
-    const pageSource = await driver.getPageSource();
-    if (pageSource.length < 3000) console.log(pageSource);
-    else console.log("Source is alright");
-  }
-
-  // const imageUrls = await Promise.all(elems.map((e) => e.getAttribute("src")));
-
-  const productDirectoryName = getDirectoryNameFromURL(url);
-
-  const dir = createDirectory(
-    `${categoryDirectoryName}/${productDirectoryName}`
-  );
-
-  console.log("Dir:", dir);
-
-  let imageCount = 0;
 
   try {
-    await Promise.all(
-      imageUrls.map((src) => {
-        const filePath = `${dir}/${imageCount}.jpg`;
-        imageCount++;
-        return downloadImage(src, filePath);
-      })
-    );
-    if (imageUrls.length > 0) {
-      delete processed[categoryUrl].toProcess[url];
-      processed[categoryUrl].processed += 1;
-    } else {
+    let imageUrl = await imgElements[0].getAttribute("src");
+    if (!imageUrl) {
       processed[categoryUrl].toProcess[url] = "Images not found";
+      return;
     }
+    const filePath = `${categoryDirectoryName}/${iteration}.jpg`;
+    await downloadImage(imageUrl, filePath);
+
+    delete processed[categoryUrl].toProcess[url];
+    processed[categoryUrl].processed += 1;
   } catch (error) {
     console.log("------------------Axios Error occured-----------------");
     processed[categoryUrl].failed[url] = 1;
@@ -234,18 +227,22 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 async function main() {
   let url;
   let brand;
+  let query;
   try {
     createProcessedFile();
 
-    url = await getMetadata("url");
-    brand = await getMetadata("brand");
+    // query = await getMetadata("keyword");
+    // brand = await getMetadata("brand");
 
-    // url =
-    //   "https://www.zara.com/ww/en/woman-outerwear-padded-l1195.html?v1=2290717";
-    // brand = "zara";
+    query = "fashion editorial";
+    brand = "pinterest";
+
+    url = `https://www.pinterest.com/search/pins/?q=${query
+      .split(" ")
+      .join("%20")}`;
 
     if (!processed[url] || processed[url].total != processed[url].processed) {
-      await getProductLinksFromUrl(url);
+      await getProductLinksFromUrl(url, query.split(" ").join("-"));
       await uploadDirectory("images", "rs_fashion_dataset", brand);
     } else {
       console.log("Processed:", processed);
@@ -259,7 +256,7 @@ async function main() {
     await uploadFile(
       "rs_fashion_dataset",
       "processed.json",
-      brand + "/" + getDirectoryNameFromURL(url) + "/" + "processed.json"
+      brand + "/" + query.split(" ").join("-") + "/" + "processed.json"
     );
   }
 

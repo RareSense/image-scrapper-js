@@ -1,4 +1,4 @@
-variable "instance_urls" {
+variable "instance_keywords" {
   type = list(string)
 }
 variable "project_id" {
@@ -7,7 +7,7 @@ variable "project_id" {
 }
 variable "brand" {
   type = string
-  default = "zara"
+  default = "pinterest"
 }
 variable "private_key" {
   description = "Private key"
@@ -35,7 +35,7 @@ resource "google_project_iam_member" "storage_object_admin" {
 }
 
 resource "google_compute_instance" "default" {
-  count        = length(var.instance_urls)
+  count        = length(var.instance_keywords)
   name         = "${var.brand}-${count.index}"
 
   machine_type = "e2-standard-2"
@@ -60,7 +60,7 @@ resource "google_compute_instance" "default" {
   }
 
   metadata = {
-    url = element(var.instance_urls, count.index)
+    keyword = element(var.instance_keywords, count.index)
     brand = var.brand
     startup-script = <<-EOT
         #!/bin/bash
@@ -90,7 +90,7 @@ resource "google_compute_instance" "default" {
             git clone https://github.com/RareSense/image-scrapper-js.git
             cd image-scrapper-js
             git fetch origin
-            git checkout zara
+            git checkout pinterest
 
             echo "Installing node dependencies"
             npm install
