@@ -178,16 +178,17 @@ async function getImagesFromUrl(
 ) {
   await driver.get(url);
 
-  await sleep(1000);
+  await sleep(10000);
 
   let imgElements = await driver.findElements(
     By.css("[data-test-id='pin-closeup-image'] img")
   );
 
   try {
-    let imageUrl = await imgElements[0].getAttribute("src");
+    let imageUrl = await imgElements[0]?.getAttribute("src");
     if (!imageUrl) {
-      processed[categoryUrl].toProcess[url] = "Images not found";
+      processed[categoryUrl].toProcess[url] = "Image not found";
+      processed[categoryUrl].failed[url] = "Image not found";
       return;
     }
     const filePath = `${categoryDirectoryName}/${iteration}.jpg`;
@@ -231,11 +232,13 @@ async function main() {
   try {
     createProcessedFile();
 
-    // query = await getMetadata("keyword");
-    // brand = await getMetadata("brand");
+    // query = "fashion editorial";
+    // brand = "pinterest";
 
-    query = "fashion editorial";
-    brand = "pinterest";
+    query = await getMetadata("keyword");
+    brand = await getMetadata("brand");
+
+    
 
     url = `https://www.pinterest.com/search/pins/?q=${query
       .split(" ")
