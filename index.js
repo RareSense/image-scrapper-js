@@ -293,6 +293,7 @@ async function main() {
     }
   } catch (error) {
     console.error("Error fetching metadata:", error);
+    processed["error"] = error;
   } finally {
     updateProcessed();
 
