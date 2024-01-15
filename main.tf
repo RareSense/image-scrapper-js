@@ -7,7 +7,7 @@ variable "project_id" {
 }
 variable "brand" {
   type = string
-  default = "pinterest"
+  default = "pinterest_2"
 }
 variable "private_key" {
   description = "Private key"

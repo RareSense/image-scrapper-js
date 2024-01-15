@@ -67,6 +67,51 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
 
   await driver.get(url);
 
+  // await sleep(10000);
+
+  await driver.wait(
+    until.elementLocated(By.css("[data-test-id='login-button']")),
+    30000
+  );
+
+  const loginButton = (
+    await driver.findElements(By.css("[data-test-id='login-button'] button"))
+  )[0];
+
+  // console.log("Login Button=", loginButton);
+  await loginButton.click();
+
+  await driver.wait(
+    until.elementLocated(
+      By.css("[data-test-id='registerForm'] input[type='email']")
+    ),
+    30000
+  );
+
+  const emailInput = (
+    await driver.findElements(
+      By.css("[data-test-id='registerForm'] input[type='email']")
+    )
+  )[0];
+
+  await emailInput.sendKeys("nimra@raresense.so");
+
+  const passwordInput = (
+    await driver.findElements(
+      By.css("[data-test-id='registerForm'] input[type='password']")
+    )
+  )[0];
+
+  await passwordInput.sendKeys("lamamama123");
+
+  const signinButton = (
+    await driver.findElements(
+      By.css("[data-test-id='registerForm'] button[type='submit']")
+    )
+  )[0];
+
+  await signinButton.click();
+
   await sleep(10000);
 
   let iterate = true;
@@ -76,6 +121,8 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
   let allLinks = [];
   let allElems = [];
   while (iterate) {
+    await sleep(10000);
+
     const elems = await driver.findElements(By.css("a[href^='/pin/']"));
 
     let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
@@ -92,7 +139,6 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
       totalElems
     );
 
-    await sleep(10000);
     const scrollPosition = await driver.executeScript(
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
@@ -141,15 +187,9 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
   let iteration = 0;
   for (let link of Object.keys(processed[url].toProcess)) {
     iteration++;
+    console.log("Processing link ", iteration);
     await getImagesFromUrl(link, queryDirectoryPath, url, iteration);
   }
-  // await Promise.all([
-  //   Object.keys(processed[url].toProcess).map((link) => {
-  //     iteration++;
-  //     console.log("Total Iterations:", iteration);
-  //     // return getImagesFromUrl(link, queryDirectoryPath, url, iteration);
-  //   }),
-  // ]);
 }
 
 function getHighestResolutionUrl(srcset) {
@@ -181,16 +221,18 @@ async function getImagesFromUrl(
   await sleep(10000);
 
   let imgElements = await driver.findElements(
-    By.css("[data-test-id='pin-closeup-image'] img")
+    By.css("[data-test-id='closeup-image'] img")
   );
 
   try {
     let imageUrl = await imgElements[0]?.getAttribute("src");
     if (!imageUrl) {
+      console.log("No image URL. imageElements:", imgElements);
       processed[categoryUrl].toProcess[url] = "Image not found";
       processed[categoryUrl].failed[url] = "Image not found";
       return;
     }
+
     const filePath = `${categoryDirectoryName}/${iteration}.jpg`;
     await downloadImage(imageUrl, filePath);
 
@@ -237,8 +279,6 @@ async function main() {
 
     query = await getMetadata("keyword");
     brand = await getMetadata("brand");
-
-    
 
     url = `https://www.pinterest.com/search/pins/?q=${query
       .split(" ")
