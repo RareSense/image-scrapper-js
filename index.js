@@ -387,13 +387,14 @@ async function main() {
         console.log("Processed[url]:", processed[url]);
       }
     }
-    await uploadDirectory("images", "rs_fashion_dataset", brand);
+    // await uploadDirectory("images", "rs_fashion_dataset", brand);
   } catch (error) {
     console.error("Error fetching metadata:", error);
     processed["error"] = error;
   } finally {
     updateProcessed();
 
+    await uploadDirectory("images", "rs_fashion_dataset", brand);
     await uploadFile(
       "rs_fashion_dataset",
       "processed.json",
