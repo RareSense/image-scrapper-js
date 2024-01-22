@@ -104,7 +104,7 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
 
-    if (scrollPosition > 1000) break;
+    // if (scrollPosition > 1000) break;
 
     if (scrollPosition != previousOffset) {
       console.log("ScrollPosition:", scrollPosition);
