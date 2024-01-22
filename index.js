@@ -363,18 +363,16 @@ async function main() {
   try {
     createProcessedFile();
 
-    let email = "cohaw23635@konican.com";
-    let password = "cohaw23635@konican.com1";
-    brand = "pinterest-2";
+    // email = "cohaw23635@konican.com";
+    // password = "cohaw23635@konican.com1";
+    // brand = "pinterest-2";
 
-    // let email = await getMetadata("email");
-    // let password = await getMetadata("password");
-    // let brand = await getMetadata("brand");
+    email = await getMetadata("email");
+    password = await getMetadata("password");
+    brand = await getMetadata("brand");
 
     let username = email.split("@")[0];
     query = username;
-
-    // brand = "pinterest";
 
     url = `https://www.pinterest.com/${username}`;
     await signin(url, email, password);
