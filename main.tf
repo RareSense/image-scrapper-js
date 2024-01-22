@@ -1,5 +1,8 @@
-variable "instance_keywords" {
-  type = list(string)
+variable "instance_users" {
+  type = list(object({
+    email = string
+    password = string
+  }))
 }
 variable "project_id" {
   type = string
@@ -35,7 +38,7 @@ resource "google_project_iam_member" "storage_object_admin" {
 }
 
 resource "google_compute_instance" "default" {
-  count        = length(var.instance_keywords)
+  count        = length(var.instance_users)
   name         = "${var.brand}-${count.index}"
 
   machine_type = "e2-standard-2"
@@ -60,7 +63,7 @@ resource "google_compute_instance" "default" {
   }
 
   metadata = {
-    keyword = element(var.instance_keywords, count.index)
+    user = element(var.instance_users, count.index)
     brand = var.brand
     startup-script = <<-EOT
         #!/bin/bash

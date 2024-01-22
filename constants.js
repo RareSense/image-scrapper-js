@@ -1,0 +1,3 @@
+export const IMAGE_DOWNLOAD_WAIT_TIME = 5000;
+export const PAGE_LOAD_WAIT_TIME = 10000;
+export const SCROLL_WAIT_TIME = 10000;

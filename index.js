@@ -14,9 +14,10 @@ const {
   uploadFile,
   shutdownSystem,
 } = require("./utlis");
+const { PAGE_LOAD_WAIT_TIME, SCROLL_WAIT_TIME, IMAGE_DOWNLOAD_WAIT_TIME } = require("./constants");
 
 let options = new chrome.Options();
-options.addArguments("headless"); // Running in headless mode
+// options.addArguments("headless"); // Running in headless mode
 options.addArguments("disable-gpu"); // Recommended when running headless
 options.addArguments("--disable-logging"); // This flag disables logging from the Chrome browser
 options.addArguments("--log-level=3"); // Sets the log level to only include critical logs
@@ -38,6 +39,7 @@ let driver = new Builder()
   .build();
 
 let processed;
+let savedPins = {};
 
 function updateProcessed() {
   const jsonString = JSON.stringify(processed, null, 2);
@@ -61,58 +63,13 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
     return;
   }
 
-  let queryDirectoryPath = createDirectory(queryDirectoryName);
-
-  console.log("Scrapping started...!");
+  console.log("Starting Saved Pin:", url);
 
   await driver.get(url);
 
-  // await sleep(10000);
+  let queryDirectoryPath = createDirectory(queryDirectoryName);
 
-  await driver.wait(
-    until.elementLocated(By.css("[data-test-id='login-button']")),
-    30000
-  );
-
-  const loginButton = (
-    await driver.findElements(By.css("[data-test-id='login-button'] button"))
-  )[0];
-
-  // console.log("Login Button=", loginButton);
-  await loginButton.click();
-
-  await driver.wait(
-    until.elementLocated(
-      By.css("[data-test-id='registerForm'] input[type='email']")
-    ),
-    30000
-  );
-
-  const emailInput = (
-    await driver.findElements(
-      By.css("[data-test-id='registerForm'] input[type='email']")
-    )
-  )[0];
-
-  await emailInput.sendKeys("nimra@raresense.so");
-
-  const passwordInput = (
-    await driver.findElements(
-      By.css("[data-test-id='registerForm'] input[type='password']")
-    )
-  )[0];
-
-  await passwordInput.sendKeys("lamamama123");
-
-  const signinButton = (
-    await driver.findElements(
-      By.css("[data-test-id='registerForm'] button[type='submit']")
-    )
-  )[0];
-
-  await signinButton.click();
-
-  await sleep(10000);
+  await sleep(PAGE_LOAD_WAIT_TIME);
 
   let iterate = true;
   let previousOffset = 0;
@@ -121,7 +78,7 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
   let allLinks = [];
   let allElems = [];
   while (iterate) {
-    await sleep(10000);
+    await sleep(SCROLL_WAIT_TIME);
 
     const elems = await driver.findElements(By.css("a[href^='/pin/']"));
 
@@ -142,6 +99,7 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
     const scrollPosition = await driver.executeScript(
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
+    if (scrollPosition > 2000) break;
 
     if (scrollPosition != previousOffset) {
       console.log("ScrollPosition:", scrollPosition);
@@ -218,7 +176,7 @@ async function getImagesFromUrl(
 ) {
   await driver.get(url);
 
-  await sleep(10000);
+  await sleep(IMAGE_DOWNLOAD_WAIT_TIME);
 
   let imgElements = await driver.findElements(
     By.css("[data-test-id='closeup-image'] img")
@@ -267,6 +225,132 @@ async function getImagesFromUrl(
   );
 }
 
+async function signin(url, email, password) {
+  console.log("Scrapping started. Url:", url);
+
+  await driver.get(url);
+
+  // await sleep(10000);
+
+  await driver.wait(
+    until.elementLocated(By.css("[data-test-id='login-button']")),
+    30000
+  );
+
+  const loginButton = (
+    await driver.findElements(By.css("[data-test-id='login-button'] button"))
+  )[0];
+
+  // console.log("Login Button=", loginButton);
+  await loginButton.click();
+
+  await driver.wait(
+    until.elementLocated(
+      By.css("[data-test-id='registerForm'] input[type='email']")
+    ),
+    30000
+  );
+
+  const emailInput = (
+    await driver.findElements(
+      By.css("[data-test-id='registerForm'] input[type='email']")
+    )
+  )[0];
+
+  await emailInput.sendKeys(email);
+
+  const passwordInput = (
+    await driver.findElements(
+      By.css("[data-test-id='registerForm'] input[type='password']")
+    )
+  )[0];
+
+  await passwordInput.sendKeys(password);
+
+  const signinButton = (
+    await driver.findElements(
+      By.css("[data-test-id='registerForm'] button[type='submit']")
+    )
+  )[0];
+
+  await signinButton.click();
+}
+
+async function getSavedPins(url) {
+  await sleep(PAGE_LOAD_WAIT_TIME);
+
+  let iterate = true;
+  let previousOffset = 0;
+
+  let totalElems = 0;
+  let allLinks = [];
+  let allElems = [];
+
+  while (iterate) {
+    await sleep(SCROLL_WAIT_TIME);
+
+    const elems = await driver.findElements(By.css("a[href^='/pin/']"));
+
+    let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
+
+    allLinks = [...allLinks, ...links];
+    allElems = [...allElems, ...elems];
+    totalElems += links.length;
+    console.log(
+      "Elems found:",
+      elems.length,
+      ",Links found:",
+      links.length,
+      ",Total Links:",
+      totalElems
+    );
+
+    const scrollPosition = await driver.executeScript(
+      "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
+    );
+
+    if (scrollPosition != previousOffset) {
+      console.log("ScrollPosition:", scrollPosition);
+      previousOffset = scrollPosition;
+    } else {
+      console.log("ScrollPosition:", scrollPosition);
+
+      if (scrollPosition < 500) {
+        const pageSource = await driver.getPageSource();
+        if (pageSource.length < 3000) console.log(pageSource);
+        else console.log("Source is alright");
+      }
+      iterate = false;
+    }
+  }
+
+  if (allElems.length > 1 && allElems.length === allLinks.length) {
+    if (!savedPins[url]) {
+      savedPins[url] = {
+        total: 0,
+        processed: 0,
+        toProcess: {},
+        failed: {},
+      };
+      let count = 0;
+      for (let link of allLinks) {
+        if (savedPins[url].toProcess[link]) {
+          console.log("Duplicated link");
+          count++;
+        } else savedPins[url].toProcess[link] = 1;
+      }
+
+      const total = Object.keys(savedPins[url].toProcess).length;
+
+      savedPins[url].total = total;
+
+      console.log("Total Links to process:", total, "Duplicated Links:", count);
+    }
+  }
+
+  return Object.keys(savedPins[url].toProcess);
+}
+
 async function main() {
   let url;
   let brand;
@@ -274,23 +358,28 @@ async function main() {
   try {
     createProcessedFile();
 
-    // query = "fashion editorial";
+    let user = await getMetadata("user");
+    let brand = await getMetadata("brand");
+    let username = user.email.split("@")[0];
+    query = username;
+    
     // brand = "pinterest";
 
-    query = await getMetadata("keyword");
-    brand = await getMetadata("brand");
+    url = `https://www.pinterest.com/${username}`;
+    await signin(url, user.email, user.password);
+    let savedPins = await getSavedPins(url);
+    console.log("Saved Pins:", savedPins);
 
-    url = `https://www.pinterest.com/search/pins/?q=${query
-      .split(" ")
-      .join("%20")}`;
-
-    if (!processed[url] || processed[url].total != processed[url].processed) {
-      await getProductLinksFromUrl(url, query.split(" ").join("-"));
-      await uploadDirectory("images", "rs_fashion_dataset", brand);
-    } else {
-      console.log("Processed:", processed);
-      console.log("Processed[url]:", processed[url]);
+    for (pin of savedPins) {
+      if (!processed[pin] || processed[pin].total != processed[pin].processed) {
+        await getProductLinksFromUrl(pin, query + "/" + pin.split(".com/")[1]);
+      } else {
+        console.log("Processed:", processed);
+        console.log("Processed[url]:", processed[url]);
+      }
     }
+    await uploadDirectory("images", "rs_fashion_dataset", brand);
+
   } catch (error) {
     console.error("Error fetching metadata:", error);
     processed["error"] = error;
