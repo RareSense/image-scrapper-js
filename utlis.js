@@ -82,12 +82,14 @@ async function uploadDirectory(
 ) {
   const files = fs.readdirSync(localFolderPath);
 
+  console.log("Local Folder:", localFolderPath,", BucketFolderPath:", bucketFolderPath);
   for (const file of files) {
     const localFilePath = path.join(localFolderPath, file);
     const bucketFilePath = path.join(bucketFolderPath, file);
 
     if (fs.lstatSync(localFilePath).isDirectory()) {
       await uploadDirectory(localFilePath, bucketName, bucketFilePath);
+
     } else {
       await storage.bucket(bucketName).upload(localFilePath, {
         destination: bucketFilePath,

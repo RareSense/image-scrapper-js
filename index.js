@@ -21,7 +21,7 @@ const {
 } = require("./constants");
 
 let options = new chrome.Options();
-options.addArguments("headless"); // Running in headless mode
+// options.addArguments("headless"); // Running in headless mode
 options.addArguments("disable-gpu"); // Recommended when running headless
 options.addArguments("--disable-logging"); // This flag disables logging from the Chrome browser
 options.addArguments("--log-level=3"); // Sets the log level to only include critical logs
@@ -103,6 +103,8 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
     const scrollPosition = await driver.executeScript(
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
+
+    if (scrollPosition > 1000) break;
 
     if (scrollPosition != previousOffset) {
       console.log("ScrollPosition:", scrollPosition);
@@ -361,13 +363,13 @@ async function main() {
   try {
     createProcessedFile();
 
-    // let email = "cohaw23635@konican.com";
-    // let password = "cohaw23635@konican.com1";
-    // brand = "pinterest-2";
+    let email = "cohaw23635@konican.com";
+    let password = "cohaw23635@konican.com1";
+    brand = "pinterest-2";
 
-    let email = await getMetadata("email");
-    let password = await getMetadata("password");
-    let brand = await getMetadata("brand");
+    // let email = await getMetadata("email");
+    // let password = await getMetadata("password");
+    // let brand = await getMetadata("brand");
 
     let username = email.split("@")[0];
     query = username;
@@ -381,7 +383,7 @@ async function main() {
 
     for (pin of savedPins) {
       if (!processed[pin] || processed[pin].total != processed[pin].processed) {
-        await getProductLinksFromUrl(pin, query + "/" + pin.split(".com/")[1]);
+        await getProductLinksFromUrl(pin, query + "/" + pin.split("pin/")[1]);
       } else {
         console.log("Processed:", processed);
         console.log("Processed[url]:", processed[url]);
