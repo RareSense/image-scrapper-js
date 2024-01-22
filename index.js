@@ -99,7 +99,6 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
     const scrollPosition = await driver.executeScript(
       "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
     );
-    if (scrollPosition > 2000) break;
 
     if (scrollPosition != previousOffset) {
       console.log("ScrollPosition:", scrollPosition);
@@ -358,15 +357,16 @@ async function main() {
   try {
     createProcessedFile();
 
-    let user = await getMetadata("user");
+    let email = await getMetadata("email");
+    let password = await getMetadata("password");
     let brand = await getMetadata("brand");
-    let username = user.email.split("@")[0];
+    let username = email.split("@")[0];
     query = username;
-    
+
     // brand = "pinterest";
 
     url = `https://www.pinterest.com/${username}`;
-    await signin(url, user.email, user.password);
+    await signin(url, email, password);
     let savedPins = await getSavedPins(url);
     console.log("Saved Pins:", savedPins);
 

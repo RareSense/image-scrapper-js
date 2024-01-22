@@ -63,7 +63,8 @@ resource "google_compute_instance" "default" {
   }
 
   metadata = {
-    user = element(var.instance_users, count.index)
+    email = element(var.instance_users, count.index).email
+    password = element(var.instance_users, count.index).password
     brand = var.brand
     startup-script = <<-EOT
         #!/bin/bash
