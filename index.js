@@ -14,10 +14,14 @@ const {
   uploadFile,
   shutdownSystem,
 } = require("./utlis");
-const { PAGE_LOAD_WAIT_TIME, SCROLL_WAIT_TIME, IMAGE_DOWNLOAD_WAIT_TIME } = require("./constants");
+const {
+  PAGE_LOAD_WAIT_TIME,
+  SCROLL_WAIT_TIME,
+  IMAGE_DOWNLOAD_WAIT_TIME,
+} = require("./constants");
 
 let options = new chrome.Options();
-// options.addArguments("headless"); // Running in headless mode
+options.addArguments("headless"); // Running in headless mode
 options.addArguments("disable-gpu"); // Recommended when running headless
 options.addArguments("--disable-logging"); // This flag disables logging from the Chrome browser
 options.addArguments("--log-level=3"); // Sets the log level to only include critical logs
@@ -357,9 +361,14 @@ async function main() {
   try {
     createProcessedFile();
 
+    // let email = "cohaw23635@konican.com";
+    // let password = "cohaw23635@konican.com1";
+    // brand = "pinterest-2";
+
     let email = await getMetadata("email");
     let password = await getMetadata("password");
     let brand = await getMetadata("brand");
+
     let username = email.split("@")[0];
     query = username;
 
@@ -379,7 +388,6 @@ async function main() {
       }
     }
     await uploadDirectory("images", "rs_fashion_dataset", brand);
-
   } catch (error) {
     console.error("Error fetching metadata:", error);
     processed["error"] = error;
