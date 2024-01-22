@@ -21,7 +21,7 @@ const {
 } = require("./constants");
 
 let options = new chrome.Options();
-// options.addArguments("headless"); // Running in headless mode
+options.addArguments("headless"); // Running in headless mode
 options.addArguments("disable-gpu"); // Recommended when running headless
 options.addArguments("--disable-logging"); // This flag disables logging from the Chrome browser
 options.addArguments("--log-level=3"); // Sets the log level to only include critical logs
