@@ -41,7 +41,7 @@ resource "google_compute_instance" "default" {
   count        = length(var.instance_users)
   name         = "${var.brand}-${count.index}"
 
-  machine_type = "e2-standard-2"
+  machine_type = "e2-standard-4"
   zone         = "us-central1-a"
 
   boot_disk {

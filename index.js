@@ -235,7 +235,7 @@ async function signin(url, email, password) {
 
   await driver.get(url);
 
-  // await sleep(10000);
+  await sleep(PAGE_LOAD_WAIT_TIME);
 
   await driver.wait(
     until.elementLocated(By.css("[data-test-id='login-button']")),
