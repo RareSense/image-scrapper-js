@@ -200,7 +200,7 @@ async function getImagesFromUrl(
     let imageUrl = await imgElements[0]?.getAttribute("src");
     if (!imageUrl) {
       console.log("No image URL. imageElements:", imgElements);
-      processed[categoryUrl].toProcess[url] = "Image not found";
+      delete processed[categoryUrl].toProcess[url];
       processed[categoryUrl].failed[url] = "Image not found";
       return;
     }
@@ -235,7 +235,7 @@ async function getImagesFromUrl(
     "Processed:",
     processed[categoryUrl].processed,
     "Failed:",
-    Object.keys(processed[categoryUrl].failed)
+    Object.keys(processed[categoryUrl].failed).length
   );
 }
 
