@@ -369,22 +369,7 @@ async function getSavedPins(url) {
   return Object.keys(savedPins[url].toProcess);
 }
 
-async function start_scrapping() {
-  initializedWebDriver();
-  createProcessedFile();
-
-  // email = "cohaw23635@konican.com";
-  // password = "cohaw23635@konican.com1";
-  // brand = "pinterest-2";
-
-  email = await getMetadata("email");
-  password = await getMetadata("password");
-  brand = await getMetadata("brand");
-
-  let username = email.split("@")[0];
-  query = username;
-
-  url = `https://www.pinterest.com/${username}`;
+async function start_scrapping(url, email, password) {
   await signin(url, email, password);
   let savedPins = await getSavedPins(url);
 
@@ -398,25 +383,43 @@ async function start_scrapping() {
       console.log("Processed[url]:", processed[url]);
     }
   }
+}
 
-  return { url, brand, query };
+async function setup() {
+  initializedWebDriver();
+  createProcessedFile();
+
+  // brand = "pinterest-2";
+  // email = "cohaw23635@konican.com";
+  // password = "cohaw23635@konican.com1";
+
+  brand = await getMetadata("brand");
+  email = await getMetadata("email");
+  password = await getMetadata("password");
+
+  let username = email.split("@")[0];
+  query = username;
+
+  url = `https://www.pinterest.com/${username}`;
+
+  return { url, brand, query, email, password };
 }
 async function main() {
   let url;
   let brand;
   let query;
+  let email, password;
   let iterate = true;
   while (iterate) {
     try {
-      ({ url, brand, query } = await start_scrapping());
+      ({ url, brand, query, email, password } = await setup());
+      await start_scrapping(url, email, password);
       iterate = false;
     } catch (error) {
       console.error("Error fetching metadata:", error);
       processed["error"] = error;
-      iterate = true;
     } finally {
       updateProcessed();
-
       await uploadDirectory("images", "rs_fashion_dataset", brand);
 
       await uploadFile(
