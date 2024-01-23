@@ -37,10 +37,11 @@ options.addArguments(
   "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 );
 
-let driver = new Builder()
-  .forBrowser("chrome")
-  .setChromeOptions(options)
-  .build();
+let driver;
+
+function initializedWebDriver() {
+  driver = new Builder().forBrowser("chrome").setChromeOptions(options).build();
+}
 
 let processed;
 let savedPins = {};
@@ -81,69 +82,77 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
   let totalElems = 0;
   let allLinks = [];
   let allElems = [];
-  while (iterate) {
-    await sleep(SCROLL_WAIT_TIME);
 
-    const elems = await driver.findElements(By.css("a[href^='/pin/']"));
+  if (!processed[url]) {
+    while (iterate) {
+      await sleep(SCROLL_WAIT_TIME);
 
-    let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
+      const elems = await driver.findElements(By.css("a[href^='/pin/']"));
 
-    allLinks = [...allLinks, ...links];
-    allElems = [...allElems, ...elems];
-    totalElems += links.length;
-    console.log(
-      "Elems found:",
-      elems.length,
-      ",Links found:",
-      links.length,
-      ",Total Links:",
-      totalElems
-    );
+      let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
 
-    const scrollPosition = await driver.executeScript(
-      "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
-    );
+      allLinks = [...allLinks, ...links];
+      allElems = [...allElems, ...elems];
+      totalElems += links.length;
+      console.log(
+        "Elems found:",
+        elems.length,
+        ",Links found:",
+        links.length,
+        ",Total Links:",
+        totalElems
+      );
 
-    // if (scrollPosition > 1000) break;
+      const scrollPosition = await driver.executeScript(
+        "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
+      );
 
-    if (scrollPosition != previousOffset) {
-      console.log("ScrollPosition:", scrollPosition);
-      previousOffset = scrollPosition;
-    } else {
-      console.log("ScrollPosition:", scrollPosition);
+      // if (scrollPosition > 1000) break;
 
-      if (scrollPosition < 500) {
-        const pageSource = await driver.getPageSource();
-        if (pageSource.length < 3000) console.log(pageSource);
-        else console.log("Source is alright");
+      if (scrollPosition != previousOffset) {
+        console.log("ScrollPosition:", scrollPosition);
+        previousOffset = scrollPosition;
+      } else {
+        console.log("ScrollPosition:", scrollPosition);
+
+        if (scrollPosition < 500) {
+          const pageSource = await driver.getPageSource();
+          if (pageSource.length < 3000) console.log(pageSource);
+          else console.log("Source is alright");
+        }
+        iterate = false;
       }
-      iterate = false;
     }
-  }
 
-  await sleep(5000);
+    await sleep(5000);
 
-  if (allElems.length > 1 && allElems.length === allLinks.length) {
-    if (!processed[url]) {
-      processed[url] = {
-        total: 0,
-        processed: 0,
-        toProcess: {},
-        failed: {},
-      };
-      let count = 0;
-      for (let link of allLinks) {
-        if (processed[url].toProcess[link]) {
-          console.log("Duplicated link");
-          count++;
-        } else processed[url].toProcess[link] = 1;
+    if (allElems.length > 1 && allElems.length === allLinks.length) {
+      if (!processed[url]) {
+        processed[url] = {
+          total: 0,
+          processed: 0,
+          toProcess: {},
+          failed: {},
+        };
+        let count = 0;
+        for (let link of allLinks) {
+          if (processed[url].toProcess[link]) {
+            console.log("Duplicated link");
+            count++;
+          } else processed[url].toProcess[link] = 1;
+        }
+
+        const total = Object.keys(processed[url].toProcess).length;
+
+        processed[url].total = total;
+
+        console.log(
+          "Total Links to process:",
+          total,
+          "Duplicated Links:",
+          count
+        );
       }
-
-      const total = Object.keys(processed[url].toProcess).length;
-
-      processed[url].total = total;
-
-      console.log("Total Links to process:", total, "Duplicated Links:", count);
     }
   }
 
@@ -282,6 +291,10 @@ async function signin(url, email, password) {
 }
 
 async function getSavedPins(url) {
+  if (savedPins[url]) {
+    return Object.keys(savedPins[url].toProcess);
+  }
+
   await sleep(PAGE_LOAD_WAIT_TIME);
 
   let iterate = true;
@@ -356,50 +369,62 @@ async function getSavedPins(url) {
   return Object.keys(savedPins[url].toProcess);
 }
 
+async function start_scrapping() {
+  initializedWebDriver();
+  createProcessedFile();
+
+  // email = "cohaw23635@konican.com";
+  // password = "cohaw23635@konican.com1";
+  // brand = "pinterest-2";
+
+  email = await getMetadata("email");
+  password = await getMetadata("password");
+  brand = await getMetadata("brand");
+
+  let username = email.split("@")[0];
+  query = username;
+
+  url = `https://www.pinterest.com/${username}`;
+  await signin(url, email, password);
+  let savedPins = await getSavedPins(url);
+
+  console.log("Saved Pins:", savedPins);
+
+  for (pin of savedPins) {
+    if (!processed[pin] || processed[pin].total != processed[pin].processed) {
+      await getProductLinksFromUrl(pin, query + "/" + pin.split("pin/")[1]);
+    } else {
+      console.log("Processed:", processed);
+      console.log("Processed[url]:", processed[url]);
+    }
+  }
+
+  return { url, brand, query };
+}
 async function main() {
   let url;
   let brand;
   let query;
-  try {
-    createProcessedFile();
+  let iterate = false;
+  while (iterate) {
+    try {
+      ({ url, brand, query } = await start_scrapping());
+      iterate = false;
+    } catch (error) {
+      console.error("Error fetching metadata:", error);
+      processed["error"] = error;
+      iterate = true;
+    } finally {
+      updateProcessed();
 
-    // email = "cohaw23635@konican.com";
-    // password = "cohaw23635@konican.com1";
-    // brand = "pinterest-2";
+      await uploadDirectory("images", "rs_fashion_dataset", brand);
 
-    email = await getMetadata("email");
-    password = await getMetadata("password");
-    brand = await getMetadata("brand");
-
-    let username = email.split("@")[0];
-    query = username;
-
-    url = `https://www.pinterest.com/${username}`;
-    await signin(url, email, password);
-    let savedPins = await getSavedPins(url);
-    console.log("Saved Pins:", savedPins);
-
-    for (pin of savedPins) {
-      if (!processed[pin] || processed[pin].total != processed[pin].processed) {
-        await getProductLinksFromUrl(pin, query + "/" + pin.split("pin/")[1]);
-      } else {
-        console.log("Processed:", processed);
-        console.log("Processed[url]:", processed[url]);
-      }
+      await uploadFile(
+        "rs_fashion_dataset",
+        "processed.json",
+        brand + "/" + query.split(" ").join("-") + "/" + "processed.json"
+      );
     }
-    // await uploadDirectory("images", "rs_fashion_dataset", brand);
-  } catch (error) {
-    console.error("Error fetching metadata:", error);
-    processed["error"] = error;
-  } finally {
-    updateProcessed();
-
-    await uploadDirectory("images", "rs_fashion_dataset", brand);
-    await uploadFile(
-      "rs_fashion_dataset",
-      "processed.json",
-      brand + "/" + query.split(" ").join("-") + "/" + "processed.json"
-    );
   }
 
   await driver.quit();
