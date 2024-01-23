@@ -405,7 +405,7 @@ async function main() {
   let url;
   let brand;
   let query;
-  let iterate = false;
+  let iterate = true;
   while (iterate) {
     try {
       ({ url, brand, query } = await start_scrapping());
