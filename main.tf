@@ -86,7 +86,7 @@ resource "google_compute_instance" "default" {
             sudo apt install -y ./google-chrome-stable_current_amd64.deb
 
             echo "Adding Private Key"
-            PRIVATE_KEY = var.private_key
+            PRIVATE_KEY='${var.private_key}'
             eval "$(ssh-agent -s)"
             echo "$PRIVATE_KEY" | ssh-add -
 

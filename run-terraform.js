@@ -17,10 +17,28 @@ function runTerraformCommand(command) {
 }
 
 // Read URLs or other inputs
-let users = [{
-  email: "cohaw23635@konican.com",
-  password: "cohaw23635@konican.com1"
-}];
+let users = [
+  // {
+  // email: "cohaw23635@konican.com",
+  // password: "cohaw23635@konican.com1"
+  // }
+  {
+    email: "yaknugokku@gufum.com",
+    password: "yasir12"
+  },
+  {
+    email: "tecehu@tutapp.bid",
+    password: "yasir12"
+  },
+  {
+    email: "zuqafi@pelaguins.net",
+    password: "yasir12"
+  },
+  {
+    email: "hasexiwa@tutapp.bid",
+    password: "yasir12"
+  }
+];
 
 // Write the URLs to a Terraform variables file or use another method to pass them
 const terraformVars = `instance_users = ${JSON.stringify(users)}`;
