@@ -91,7 +91,7 @@ async function getProductLinksFromUrl(url) {
   await sleep(5000);
 
   const elems = await driver.findElements(
-    By.css(".product-link.product-grid-product__link.link")
+    By.css(".product-image a")
   );
 
   let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
@@ -152,22 +152,22 @@ async function getImagesFromUrl(url, categoryDirectoryName, categoryUrl) {
 
   await sleep(1000);
 
-  let pictureElements = await driver.findElements(By.tagName("picture"));
-
+  let pictureElements = await driver.findElements(By.css("source[media='(min-width: 1500px)'][type='image/avif']"));
+  // let imageUrls = await driver.findElements(By.css("source[media='(min-width: 1500px)'][type='image/avif']"));
   let imageUrls = [];
   for (let picture of pictureElements) {
-    let srcset = await picture
-      .findElement(By.tagName("source"))
-      .getAttribute("srcset");
-    let highestResUrl = getHighestResolutionUrl(srcset);
-    imageUrls.push(highestResUrl);
+    let url = await picture.getAttribute("srcset");
+  //     .findElement(By.tagName("source"))
+      // .getAttribute("srcset");
+  //   let highestResUrl = getHighestResolutionUrl(srcset);
+    imageUrls.push(url);
   }
 
   console.log(
     "Total Images located:",
     imageUrls.length,
-    "=",
-    pictureElements.length
+    // "=",
+    // pictureElements.length
   );
 
   if (imageUrls.length < 1) {
@@ -237,12 +237,12 @@ async function main() {
   try {
     createProcessedFile();
 
-    url = await getMetadata("url");
-    brand = await getMetadata("brand");
+    // url = await getMetadata("url");
+    // brand = await getMetadata("brand");
 
-    // url =
-    //   "https://www.zara.com/ww/en/woman-outerwear-padded-l1195.html?v1=2290717";
-    // brand = "zara";
+    url =
+      "https://www.levi.com/US/en_US/clothing/women/jeans/straight/c/levi_clothing_women_jeans_straight";
+    brand = "levis";
 
     if (!processed[url] || processed[url].total != processed[url].processed) {
       await getProductLinksFromUrl(url);
