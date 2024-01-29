@@ -342,14 +342,17 @@ async function getSavedPins(url) {
     }
   }
 
+  if (!savedPins[url]) {
+    savedPins[url] = {
+      total: 0,
+      processed: 0,
+      toProcess: {},
+      failed: {},
+    };
+  }
+
   if (allElems.length > 1 && allElems.length === allLinks.length) {
     if (!savedPins[url]) {
-      savedPins[url] = {
-        total: 0,
-        processed: 0,
-        toProcess: {},
-        failed: {},
-      };
       let count = 0;
       for (let link of allLinks) {
         if (savedPins[url].toProcess[link]) {
@@ -365,6 +368,7 @@ async function getSavedPins(url) {
       console.log("Total Links to process:", total, "Duplicated Links:", count);
     }
   }
+  
 
   return Object.keys(savedPins[url].toProcess);
 }
