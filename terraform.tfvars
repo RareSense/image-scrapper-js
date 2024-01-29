@@ -1,1 +1,1 @@
-instance_users = [{"email":"cohaw23635@konican.com","password":"cohaw23635@konican.com1"}]
+instance_users = [{"email":"yaknugokku@gufum.com","password":"yasir12"},{"email":"tecehu@tutapp.bid","password":"yasir12"},{"email":"zuqafi@pelaguins.net","password":"yasir12"},{"email":"hasexiwa@tutapp.bid","password":"yasir12"}]
