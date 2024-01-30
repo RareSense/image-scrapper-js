@@ -44,7 +44,6 @@ function initializedWebDriver() {
 }
 
 let processed;
-let savedPins = {};
 
 function updateProcessed() {
   const jsonString = JSON.stringify(processed, null, 2);
@@ -87,7 +86,9 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
     while (iterate) {
       await sleep(SCROLL_WAIT_TIME);
 
-      const elems = await driver.findElements(By.css("a[href^='/pin/']"));
+      const elems = await driver.findElements(
+        By.css(".product-card__image a.h-full")
+      );
 
       let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
 
@@ -120,7 +121,14 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
           if (pageSource.length < 3000) console.log(pageSource);
           else console.log("Source is alright");
         }
-        iterate = false;
+        const showMoreButton = await driver.findElements(
+          By.css("a.button-link.inline-flex.items-center")
+        );
+        if (showMoreButton && showMoreButton[0]) {
+          await showMoreButton[0].click();
+        } else {
+          iterate = false;
+        }
       }
     }
 
@@ -239,153 +247,12 @@ async function getImagesFromUrl(
   );
 }
 
-async function signin(url, email, password) {
-  console.log("Scrapping started. Url:", url);
-
-  await driver.get(url);
-
-  await sleep(PAGE_LOAD_WAIT_TIME);
-
-  await driver.wait(
-    until.elementLocated(By.css("[data-test-id='login-button']")),
-    30000
-  );
-
-  const loginButton = (
-    await driver.findElements(By.css("[data-test-id='login-button'] button"))
-  )[0];
-
-  // console.log("Login Button=", loginButton);
-  await loginButton.click();
-
-  await driver.wait(
-    until.elementLocated(
-      By.css("[data-test-id='registerForm'] input[type='email']")
-    ),
-    30000
-  );
-
-  const emailInput = (
-    await driver.findElements(
-      By.css("[data-test-id='registerForm'] input[type='email']")
-    )
-  )[0];
-
-  await emailInput.sendKeys(email);
-
-  const passwordInput = (
-    await driver.findElements(
-      By.css("[data-test-id='registerForm'] input[type='password']")
-    )
-  )[0];
-
-  await passwordInput.sendKeys(password);
-
-  const signinButton = (
-    await driver.findElements(
-      By.css("[data-test-id='registerForm'] button[type='submit']")
-    )
-  )[0];
-
-  await signinButton.click();
-}
-
-async function getSavedPins(url) {
-  if (savedPins[url]) {
-    return Object.keys(savedPins[url].toProcess);
-  }
-
-  await sleep(PAGE_LOAD_WAIT_TIME);
-
-  let iterate = true;
-  let previousOffset = 0;
-
-  let totalElems = 0;
-  let allLinks = [];
-  let allElems = [];
-
-  while (iterate) {
-    await sleep(SCROLL_WAIT_TIME);
-
-    const elems = await driver.findElements(By.css("a[href^='/pin/']"));
-
-    let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
-
-    allLinks = [...allLinks, ...links];
-    allElems = [...allElems, ...elems];
-    totalElems += links.length;
-    console.log(
-      "Elems found:",
-      elems.length,
-      ",Links found:",
-      links.length,
-      ",Total Links:",
-      totalElems
-    );
-
-    const scrollPosition = await driver.executeScript(
-      "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
-    );
-
-    if (scrollPosition != previousOffset) {
-      console.log("ScrollPosition:", scrollPosition);
-      previousOffset = scrollPosition;
-    } else {
-      console.log("ScrollPosition:", scrollPosition);
-
-      if (scrollPosition < 500) {
-        const pageSource = await driver.getPageSource();
-        if (pageSource.length < 3000) console.log(pageSource);
-        else console.log("Source is alright");
-      }
-      iterate = false;
-    }
-  }
-
-  if (!savedPins[url]) {
-    savedPins[url] = {
-      total: 0,
-      processed: 0,
-      toProcess: {},
-      failed: {},
-    };
-  }
-
-  if (allElems.length > 1 && allElems.length === allLinks.length) {
-    if (!savedPins[url]) {
-      let count = 0;
-      for (let link of allLinks) {
-        if (savedPins[url].toProcess[link]) {
-          console.log("Duplicated link");
-          count++;
-        } else savedPins[url].toProcess[link] = 1;
-      }
-
-      const total = Object.keys(savedPins[url].toProcess).length;
-
-      savedPins[url].total = total;
-
-      console.log("Total Links to process:", total, "Duplicated Links:", count);
-    }
-  }
-  
-
-  return Object.keys(savedPins[url].toProcess);
-}
-
-async function start_scrapping(url, email, password) {
-  await signin(url, email, password);
-  let savedPins = await getSavedPins(url);
-
-  console.log("Saved Pins:", savedPins);
-
-  for (pin of savedPins) {
-    if (!processed[pin] || processed[pin].total != processed[pin].processed) {
-      await getProductLinksFromUrl(pin, query + "/" + pin.split("pin/")[1]);
-    } else {
-      console.log("Processed:", processed);
-      console.log("Processed[url]:", processed[url]);
-    }
+async function start_scrapping(url) {
+  if (!processed[url] || processed[url].total != processed[url].processed) {
+    await getProductLinksFromUrl(url, getDirectoryNameFromURL(url));
+  } else {
+    console.log("Processed:", processed);
+    console.log("Processed[url]:", processed[url]);
   }
 }
 
@@ -393,31 +260,24 @@ async function setup() {
   initializedWebDriver();
   createProcessedFile();
 
-  // brand = "pinterest-2";
-  // email = "cohaw23635@konican.com";
-  // password = "cohaw23635@konican.com1";
+  let brand, url;
 
-  brand = await getMetadata("brand");
-  email = await getMetadata("email");
-  password = await getMetadata("password");
+  brand = "prada";
+  url = `https://www.prada.com/ww/en/womens/ready-to-wear/c/10048EU`;
 
-  let username = email.split("@")[0];
-  query = username;
+  // brand = await getMetadata("brand");
+  // url = await getMetadata("url");
 
-  url = `https://www.pinterest.com/${username}`;
-
-  return { url, brand, query, email, password };
+  return { url, brand };
 }
 async function main() {
   let url;
   let brand;
-  let query;
-  let email, password;
   let iterate = true;
   while (iterate) {
     try {
-      ({ url, brand, query, email, password } = await setup());
-      await start_scrapping(url, email, password);
+      ({ url, brand } = await setup());
+      await start_scrapping(url);
       iterate = false;
     } catch (error) {
       console.error("Error fetching metadata:", error);
@@ -429,7 +289,7 @@ async function main() {
       await uploadFile(
         "rs_fashion_dataset",
         "processed.json",
-        brand + "/" + query.split(" ").join("-") + "/" + "processed.json"
+        brand + "/" + getDirectoryNameFromURL(url) + "/" + "processed.json"
       );
     }
   }
