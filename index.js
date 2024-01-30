@@ -21,7 +21,7 @@ const {
 } = require("./constants");
 
 let options = new chrome.Options();
-options.addArguments("headless"); // Running in headless mode
+// options.addArguments("headless"); // Running in headless mode
 options.addArguments("disable-gpu"); // Recommended when running headless
 options.addArguments("--disable-logging"); // This flag disables logging from the Chrome browser
 options.addArguments("--log-level=3"); // Sets the log level to only include critical logs
@@ -75,6 +75,14 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
 
   await sleep(PAGE_LOAD_WAIT_TIME);
 
+  const rejectButton = await driver.findElements(
+    By.css("a.cookie__close_text")
+  );
+
+  if (rejectButton && rejectButton[0]) {
+    await rejectButton[0].click();
+  }
+
   let iterate = true;
   let previousOffset = 0;
 
@@ -82,13 +90,11 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
   let allLinks = [];
   let allElems = [];
 
+  let clickButton = true;
+
   if (!processed[url]) {
     while (iterate) {
-      await sleep(SCROLL_WAIT_TIME);
-
-      const elems = await driver.findElements(
-        By.css(".product-card__image a.h-full")
-      );
+      const elems = await driver.findElements(By.css(".product-card a.h-full"));
 
       let links = await Promise.all(elems.map((e) => e.getAttribute("href")));
 
@@ -110,6 +116,8 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
 
       // if (scrollPosition > 1000) break;
 
+      await sleep(SCROLL_WAIT_TIME);
+
       if (scrollPosition != previousOffset) {
         console.log("ScrollPosition:", scrollPosition);
         previousOffset = scrollPosition;
@@ -121,11 +129,14 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
           if (pageSource.length < 3000) console.log(pageSource);
           else console.log("Source is alright");
         }
+
         const showMoreButton = await driver.findElements(
-          By.css("a.button-link.inline-flex.items-center")
+          By.css("span.button-link__text.relative.inline-block")
         );
-        if (showMoreButton && showMoreButton[0]) {
+
+        if (showMoreButton && showMoreButton[0] && clickButton) {
           await showMoreButton[0].click();
+          clickButton = false;
         } else {
           iterate = false;
         }
@@ -173,21 +184,18 @@ async function getProductLinksFromUrl(url, queryDirectoryName) {
 }
 
 function getHighestResolutionUrl(srcset) {
-  let urls = srcset.split(", ");
-  let highestResUrl = "";
-  let maxRes = 0;
+  const sources = srcset.split(",").map((src) => {
+    const [url, resolution] = src.trim().split(" ");
+    return { url, resolution: parseInt(resolution) };
+  });
 
-  for (let url of urls) {
-    let parts = url.split(" ");
-    let res = parseInt(parts[1].replace("w", ""));
-
-    if (res > maxRes) {
-      maxRes = res;
-      highestResUrl = parts[0];
-    }
-  }
-
-  return highestResUrl;
+  // Step 3: Find the highest resolution image
+  const highestResImage = sources.reduce((maxResImg, currentImg) => {
+    return maxResImg.resolution > currentImg.resolution
+      ? maxResImg
+      : currentImg;
+  });
+  return highestResImage;
 }
 
 async function getImagesFromUrl(
@@ -198,26 +206,50 @@ async function getImagesFromUrl(
 ) {
   await driver.get(url);
 
-  await sleep(IMAGE_DOWNLOAD_WAIT_TIME);
-
-  let imgElements = await driver.findElements(
-    By.css("[data-test-id='closeup-image'] img")
+  const scrollPosition = await driver.executeScript(
+    "window.scrollTo(0, document.body.scrollHeight);return window.pageYOffset;"
   );
 
+  await sleep(SCROLL_WAIT_TIME);
+  await sleep(IMAGE_DOWNLOAD_WAIT_TIME);
+
+  let imgElements = await driver.findElements(By.css("img.pdp-product-img"));
+
+  let imageUrls = [];
+  for (let imgEl of imgElements) {
+    let srcset = await imgEl.getAttribute("srcset");
+    let highestResUrl = getHighestResolutionUrl(srcset);
+    imageUrls.push(highestResUrl);
+  }
+
+  console.log(
+    "Total Images located:",
+    imageUrls.length,
+    "=",
+    pictureElements.length
+  );
+
+  const productDirectoryName = getDirectoryNameFromURL(url);
+
+  const dir = createDirectory(
+    `${categoryDirectoryName}/${productDirectoryName}`
+  );
+  let imageCount = 0;
+
   try {
-    let imageUrl = await imgElements[0]?.getAttribute("src");
-    if (!imageUrl) {
-      console.log("No image URL. imageElements:", imgElements);
-      delete processed[categoryUrl].toProcess[url];
-      processed[categoryUrl].failed[url] = "Image not found";
-      return;
-    }
-
-    const filePath = `${categoryDirectoryName}/${iteration}.jpg`;
-    await downloadImage(imageUrl, filePath);
-
+    await Promise.all(
+      imageUrls.map((src) => {
+        const filePath = `${dir}/${imageCount}.jpg`;
+        imageCount++;
+        return downloadImage(src, filePath);
+      })
+    );
     delete processed[categoryUrl].toProcess[url];
-    processed[categoryUrl].processed += 1;
+    if (imageUrls.length > 0) {
+      processed[categoryUrl].processed += 1;
+    } else {
+      processed[categoryUrl].failed[url] = "Images not found";
+    }
   } catch (error) {
     console.log("------------------Axios Error occured-----------------");
     processed[categoryUrl].failed[url] = 1;
